@@ -86,10 +86,21 @@ const Commentary = (() => {
       .replace(/{name}/g, context.name ?? '');
   }
 
+  let lastTemplate = null;
+
   function pickLine(category, context) {
     const pool = LINES[category];
     if (!pool || pool.length === 0) return '';
-    const template = pool[Math.floor(Math.random() * pool.length)];
+    let template = pool[Math.floor(Math.random() * pool.length)];
+    // 同じセリフが連続しないよう、プールが2つ以上あれば選び直す
+    if (pool.length > 1) {
+      let attempts = 0;
+      while (template === lastTemplate && attempts < 5) {
+        template = pool[Math.floor(Math.random() * pool.length)];
+        attempts += 1;
+      }
+    }
+    lastTemplate = template;
     return fillTemplate(template, context);
   }
 

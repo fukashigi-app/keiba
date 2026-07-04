@@ -36,7 +36,7 @@ const UI = (() => {
       btnSkipLineup: document.getElementById('btn-skip-lineup'),
 
       votingTimer: document.getElementById('voting-timer'),
-      votingReadyMessage: document.getElementById('voting-ready-message'),
+      votingGrid: document.getElementById('voting-grid'),
 
       countdownNumber: document.getElementById('countdown-number'),
 
@@ -79,16 +79,19 @@ const UI = (() => {
     Commentary.speak('');
     AppState.runtime.horses = HorseGenerator.generateHorses();
     AppState.runtime.raceResult = null;
-    AppState.runtime.readyForStart = false;
 
-    renderLineup(AppState.runtime.horses);
+    renderHorseGrid(el.lineupGrid, AppState.runtime.horses);
     showScreen('lineup');
     AudioManager.playBgm('pre');
     startLineupCountdown();
   }
 
-  function renderLineup(horses) {
-    el.lineupGrid.innerHTML = '';
+  /**
+   * 出走馬一覧のカードを指定のグリッド要素に描画する。
+   * 馬紹介画面・投票受付画面の両方から呼ばれる共通処理。
+   */
+  function renderHorseGrid(gridEl, horses) {
+    gridEl.innerHTML = '';
     horses.forEach((horse) => {
       const card = document.createElement('div');
       card.className = 'horse-card';
@@ -100,7 +103,7 @@ const UI = (() => {
         <div class="stat-row"><span>Stamina</span><div class="stat-bar"><div class="stat-fill" style="width:${horse.stamina}%"></div></div><span class="stat-val">${horse.stamina}</span></div>
         <div class="stat-row"><span>Luck</span><div class="stat-bar"><div class="stat-fill" style="width:${horse.luck}%"></div></div><span class="stat-val">${horse.luck}</span></div>
       `;
-      el.lineupGrid.appendChild(card);
+      gridEl.appendChild(card);
     });
   }
 
@@ -123,7 +126,7 @@ const UI = (() => {
   // ------------------------------------------------------------
   function startVotingPhase() {
     AppState.clearAllTimers();
-    el.votingReadyMessage.classList.add('hidden');
+    renderHorseGrid(el.votingGrid, AppState.runtime.horses);
     showScreen('voting');
 
     let remaining = AppState.settings.votingDuration;
@@ -133,15 +136,11 @@ const UI = (() => {
       el.votingTimer.textContent = Math.max(0, remaining);
       if (remaining <= 0) {
         clearInterval(id);
-        enterReadyForStart();
+        // 投票終了 → 自動的にカウントダウンへ進み、そのままレースを開始する
+        runCountdownThenRace();
       }
     }, 1000);
     AppState.registerTimer(id);
-  }
-
-  function enterReadyForStart() {
-    AppState.runtime.readyForStart = true;
-    el.votingReadyMessage.classList.remove('hidden');
   }
 
   /**
@@ -362,7 +361,6 @@ const UI = (() => {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     AppState.runtime.horses = [];
     AppState.runtime.raceResult = null;
-    AppState.runtime.readyForStart = false;
     showScreen('top');
   }
 

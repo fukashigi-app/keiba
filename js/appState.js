@@ -26,7 +26,6 @@ const AppState = (() => {
     currentScreen: 'top',
     timers: [], // setTimeout/setInterval のID一覧（リセット時に一括クリア）
     animationFrameId: null,
-    readyForStart: false, // 投票終了後、STARTボタン待ちかどうか
   };
 
   function registerTimer(id) {

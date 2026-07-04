@@ -50,6 +50,10 @@ const RaceEngine = (() => {
     // 生の累積距離（順位決定の元になる数値）
     const rawFrames = [new Array(horseCount).fill(0)];
 
+    // 各馬の「勢いの波（サージ）」の状態。ゴールまで数十回発生させることで、
+    // レース中盤でも順位が頻繁に入れ替わる展開を作る。
+    const surgeState = horses.map(() => ({ ticksRemaining: 0, multiplier: 1 }));
+
     for (let t = 1; t <= totalTicks; t++) {
       const progressFraction = t / totalTicks;
       const prev = rawFrames[t - 1];
@@ -70,12 +74,20 @@ const RaceEngine = (() => {
           increment -= fatiguePenalty;
         }
 
-        // Luck が高い馬ほど終盤に一気に伸びる「スパート」が発生しやすい
-        if (progressFraction > 0.6) {
-          const burstChance = (horse.luck / 100) * 0.06;
-          if (Math.random() < burstChance) {
-            increment *= 1 + (horse.luck / 100) * 0.8;
-          }
+        // 勢いの波：一定確率で加速／失速が数ティック続く。Luckが高いほど
+        // 加速側に振れやすく、大きく伸びる。誰にでも起こり得るため、
+        // 終盤どころかレース全体を通じて先頭が入れ替わり続ける。
+        const surge = surgeState[i];
+        if (surge.ticksRemaining > 0) {
+          increment *= surge.multiplier;
+          surge.ticksRemaining -= 1;
+        } else if (Math.random() < 0.035) {
+          const isSpurt = Math.random() < 0.4 + (horse.luck / 100) * 0.3;
+          surge.multiplier = isSpurt
+            ? 1.5 + (horse.luck / 100) * 0.7 // 加速: 約1.5〜2.2倍
+            : 0.25 + Math.random() * 0.3; // 失速: 約0.25〜0.55倍
+          surge.ticksRemaining = 8 + Math.floor(Math.random() * 10); // 0.8〜1.8秒持続
+          increment *= surge.multiplier;
         }
 
         current[i] = prev[i] + Math.max(0.05, increment);
