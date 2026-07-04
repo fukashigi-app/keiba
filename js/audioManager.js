@@ -27,15 +27,23 @@ const AudioManager = (() => {
     result: 'assets/audio/se_result.mp3',
   };
 
+  // 同じ効果音を連続再生できるよう、キーごとに複数のAudio要素を
+  // あらかじめ用意しておく（順番に使い回す）。毎回cloneNode()で
+  // 新規要素を作ると、スマホ（特にiOS Safari）ではユーザー操作と
+  // 無関係に生成された要素とみなされ再生がブロックされるため。
+  const SE_POOL_SIZE = 3;
+
   let bgmEnabled = true;
   let seEnabled = true;
   let masterVolume = 0.7;
+  let unlocked = false;
 
   let currentBgm = null;
   let currentBgmKey = null;
 
   const bgmElements = {};
-  const seElements = {};
+  const sePools = {};
+  const sePoolIndex = {};
 
   /**
    * Audio要素を作成する。読み込みエラーが出ても例外を投げず、
@@ -57,18 +65,46 @@ const AudioManager = (() => {
       bgmElements[key] = createAudio(src, true);
     });
     Object.entries(SE_FILES).forEach(([key, src]) => {
-      seElements[key] = createAudio(src, false);
+      sePools[key] = Array.from({ length: SE_POOL_SIZE }, () => createAudio(src, false));
+      sePoolIndex[key] = 0;
     });
   }
 
   function safePlay(audio) {
     if (!audio || audio.dataset.unavailable === 'true') return;
-    const playPromise = audio.play();
-    if (playPromise && typeof playPromise.catch === 'function') {
-      playPromise.catch(() => {
-        // 音源未配置・ブラウザのオートプレイ制限などで再生できない場合は無視する
-      });
+    try {
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {
+          // 音源未配置・ブラウザのオートプレイ制限などで再生できない場合は無視する
+        });
+      }
+    } catch (e) {
+      // 一部ブラウザでは無効な音源に対しplay()が同期的に例外を投げるため捕捉する
     }
+  }
+
+  /**
+   * ユーザーの最初のタップ／クリックのタイミングで一度だけ呼び出す。
+   * すべてのAudio要素を一度再生→即停止しておくことで、以降タイマー
+   * 経由（ユーザー操作の外）で play() してもブラウザの自動再生制限に
+   * ブロックされないようにする（スマホ対応）。
+   */
+  function unlock() {
+    if (unlocked) return;
+    unlocked = true;
+    const allAudios = [
+      ...Object.values(bgmElements),
+      ...Object.values(sePools).flat(),
+    ];
+    allAudios.forEach((audio) => {
+      const originalVolume = audio.volume;
+      audio.volume = 0;
+      safePlay(audio);
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = originalVolume;
+    });
   }
 
   function playBgm(key) {
@@ -94,12 +130,13 @@ const AudioManager = (() => {
 
   function playSe(key) {
     if (!seEnabled) return;
-    const audio = seElements[key];
-    if (!audio) return;
-    // 同じ効果音が連続で鳴らせるよう複製して再生する
-    const clone = audio.cloneNode();
-    clone.volume = masterVolume;
-    safePlay(clone);
+    const pool = sePools[key];
+    if (!pool) return;
+    const audio = pool[sePoolIndex[key]];
+    sePoolIndex[key] = (sePoolIndex[key] + 1) % pool.length;
+    audio.currentTime = 0;
+    audio.volume = masterVolume;
+    safePlay(audio);
   }
 
   function setBgmEnabled(value) {
@@ -119,6 +156,7 @@ const AudioManager = (() => {
 
   return {
     init,
+    unlock,
     playBgm,
     stopBgm,
     playSe,

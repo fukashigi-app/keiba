@@ -17,4 +17,16 @@ document.addEventListener('DOMContentLoaded', () => {
   AudioManager.setVolume(AppState.settings.volume);
   AudioManager.setBgmEnabled(AppState.settings.bgmEnabled);
   AudioManager.setSeEnabled(AppState.settings.seEnabled);
+
+  // ブラウザの自動再生制限に対応するため、ユーザーの最初のタップ／
+  // クリックのタイミングで音声再生を「解錠」する（スマホ・PC共通）。
+  // どのボタンを押しても解錠されるよう、documentレベルで一度だけ拾う。
+  const unlockAudio = () => {
+    AudioManager.unlock();
+    Commentary.unlock();
+    document.removeEventListener('pointerdown', unlockAudio);
+    document.removeEventListener('keydown', unlockAudio);
+  };
+  document.addEventListener('pointerdown', unlockAudio);
+  document.addEventListener('keydown', unlockAudio);
 });

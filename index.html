@@ -26,6 +26,7 @@
   <!-- ============ 馬紹介画面 ============ -->
   <section id="screen-lineup" class="screen">
     <h2 class="screen-title">出走馬紹介</h2>
+    <div id="lineup-race-info" class="race-info"></div>
     <div id="lineup-timer" class="timer-badge"></div>
     <div id="lineup-grid" class="lineup-grid"></div>
     <button id="btn-skip-lineup" class="btn btn-outline btn-skip">投票開始へ進む</button>
@@ -35,6 +36,7 @@
   <section id="screen-voting" class="screen screen-voting">
     <div class="voting-header">
       <h2 class="voting-heading">投票受付中</h2>
+      <div id="voting-race-info" class="race-info race-info-compact"></div>
       <div id="voting-timer" class="voting-timer">90</div>
       <p class="voting-sub">紙の投票券をご記入ください</p>
     </div>
@@ -132,6 +134,7 @@
 
 <script src="js/horseNames.js"></script>
 <script src="js/horseGenerator.js"></script>
+<script src="js/raceConditions.js"></script>
 <script src="js/raceEngine.js"></script>
 <script src="js/commentary.js"></script>
 <script src="js/audioManager.js"></script>

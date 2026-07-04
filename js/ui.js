@@ -35,10 +35,12 @@ const UI = (() => {
 
       lineupGrid: document.getElementById('lineup-grid'),
       lineupTimer: document.getElementById('lineup-timer'),
+      lineupRaceInfo: document.getElementById('lineup-race-info'),
       btnSkipLineup: document.getElementById('btn-skip-lineup'),
 
       votingTimer: document.getElementById('voting-timer'),
       votingGrid: document.getElementById('voting-grid'),
+      votingRaceInfo: document.getElementById('voting-race-info'),
 
       countdownNumber: document.getElementById('countdown-number'),
 
@@ -89,29 +91,54 @@ const UI = (() => {
     el.photoFinishOverlay.classList.add('hidden');
     AppState.runtime.horses = HorseGenerator.generateHorses();
     AppState.runtime.raceResult = null;
+    AppState.runtime.raceNumber += 1;
+    AppState.runtime.course = RaceConditions.pickRandomCourse();
+    AppState.runtime.weather = RaceConditions.pickRandomWeather();
 
-    renderHorseGrid(el.lineupGrid, AppState.runtime.horses);
+    renderRaceInfo(el.lineupRaceInfo);
+    renderHorseGrid(el.lineupGrid, AppState.runtime.horses, AppState.runtime.course);
     showScreen('lineup');
     AudioManager.playBgm('pre');
     startLineupCountdown();
   }
 
   /**
+   * 「第Nレース／コース／天候」の案内板を描画する。
+   * 馬紹介画面・投票受付画面の両方から呼ばれる共通処理。
+   */
+  function renderRaceInfo(infoEl) {
+    const { raceNumber, course, weather } = AppState.runtime;
+    infoEl.innerHTML = `
+      <div class="race-info-rule"></div>
+      <div class="race-info-row race-info-title">第${raceNumber}レース</div>
+      <div class="race-info-row">コース：${course.label}</div>
+      <div class="race-info-row">天候：${weather.label}</div>
+      <div class="race-info-rule"></div>
+    `;
+  }
+
+  /**
    * 出走馬一覧のカードを指定のグリッド要素に描画する。
    * 馬紹介画面・投票受付画面の両方から呼ばれる共通処理。
    */
-  function renderHorseGrid(gridEl, horses) {
+  function renderHorseGrid(gridEl, horses, course) {
     gridEl.innerHTML = '';
     horses.forEach((horse) => {
       const card = document.createElement('div');
       card.className = 'horse-card';
       card.style.setProperty('--jersey', horse.color);
+      const turfHighlight = course && course.surface === 'turf' ? 'aptitude-active' : '';
+      const dirtHighlight = course && course.surface === 'dirt' ? 'aptitude-active' : '';
       card.innerHTML = `
         <div class="horse-card-number">${horse.number}</div>
         <div class="horse-card-name">${horse.name}</div>
         <div class="stat-row"><span>Speed</span><div class="stat-bar"><div class="stat-fill" style="width:${horse.speed}%"></div></div><span class="stat-val">${horse.speed}</span></div>
         <div class="stat-row"><span>Stamina</span><div class="stat-bar"><div class="stat-fill" style="width:${horse.stamina}%"></div></div><span class="stat-val">${horse.stamina}</span></div>
         <div class="stat-row"><span>Luck</span><div class="stat-bar"><div class="stat-fill" style="width:${horse.luck}%"></div></div><span class="stat-val">${horse.luck}</span></div>
+        <div class="aptitude-row">
+          <div class="aptitude-item ${turfHighlight}"><span>芝</span><span class="aptitude-stars">${RaceConditions.starString(horse.turfAptitude)}</span></div>
+          <div class="aptitude-item ${dirtHighlight}"><span>ダート</span><span class="aptitude-stars">${RaceConditions.starString(horse.dirtAptitude)}</span></div>
+        </div>
       `;
       gridEl.appendChild(card);
     });
@@ -136,7 +163,8 @@ const UI = (() => {
   // ------------------------------------------------------------
   function startVotingPhase() {
     AppState.clearAllTimers();
-    renderHorseGrid(el.votingGrid, AppState.runtime.horses);
+    renderRaceInfo(el.votingRaceInfo);
+    renderHorseGrid(el.votingGrid, AppState.runtime.horses, AppState.runtime.course);
     showScreen('voting');
 
     let remaining = AppState.settings.votingDuration;
@@ -241,7 +269,8 @@ const UI = (() => {
   function runRace() {
     const horses = AppState.runtime.horses;
     const duration = AppState.settings.raceDuration;
-    const result = RaceEngine.simulateRace(horses, duration);
+    const { course, weather } = AppState.runtime;
+    const result = RaceEngine.simulateRace(horses, duration, course, weather);
     AppState.runtime.raceResult = result;
 
     // 画面を表示してからDOMを構築する。非表示(display:none)のままだと
@@ -342,6 +371,7 @@ const UI = (() => {
   function finishRace(result) {
     document.querySelectorAll('.horse').forEach((h) => h.classList.remove('running'));
     AudioManager.playSe('goal');
+    AudioManager.playSe('cheer');
     const finishText = Commentary.speakCategory('finishLine');
     showTicker(finishText);
 

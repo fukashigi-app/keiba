@@ -2,7 +2,8 @@
  * horseGenerator.js
  * ------------------------------------------------------------
  * 出走馬（8頭）を生成するモジュール。
- * 各馬は 馬番 / 馬名 / Speed / Stamina / Luck（各100点満点）を持つ。
+ * 各馬は 馬番 / 馬名 / Speed / Stamina / Luck（各100点満点）に加えて、
+ * 芝・ダートそれぞれのコース適性（1〜5の星評価）を持つ。
  * ------------------------------------------------------------
  */
 
@@ -25,6 +26,13 @@ const HorseGenerator = (() => {
   }
 
   /**
+   * コース適性（1〜5の星）をランダムに生成する。
+   */
+  function randomAptitude() {
+    return Math.floor(Math.random() * 5) + 1; // 1 - 5
+  }
+
+  /**
    * 新しい8頭の出走馬を生成する。
    */
   function generateHorses() {
@@ -38,6 +46,8 @@ const HorseGenerator = (() => {
         speed: randomStat(),
         stamina: randomStat(),
         luck: randomStat(),
+        turfAptitude: randomAptitude(),
+        dirtAptitude: randomAptitude(),
         color: JERSEY_COLORS[i % JERSEY_COLORS.length],
       });
     }

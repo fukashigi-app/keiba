@@ -3,13 +3,15 @@
  * ------------------------------------------------------------
  * レースシミュレーションのロジック本体。
  *
- * 順位決定ルール：「能力60% ＋ ランダム40%」
- *   - 毎ティック（コマ送りの1コマ）ごとに、各馬の能力値とランダム値を
- *     60:40 で合成した「進み幅」を積み上げていく。
+ * 順位決定ルール：「能力55% ＋ コース適性15% ＋ ランダム30%」
+ *   - 毎ティック（コマ送りの1コマ）ごとに、各馬の能力値・コース適性・
+ *     ランダム値を 55:15:30 で合成した「進み幅」を積み上げていく。
  *   - 人気馬（能力値が高い馬）が毎回勝つことがないよう、ランダム性を
- *     しっかり効かせている。
+ *     しっかり効かせている。コース適性は「強すぎない補正」に留める。
  *   - Stamina が低い馬は後半にペースが落ちやすく、Luck が高い馬は
  *     終盤に「一気に加速するスパート」が発生しやすい。
+ *   - 天候×コースの組み合わせにより、能力配分やコース適性の効き方が
+ *     わずかに変化する（例：芝＋雨でスタミナ型がやや有利）。
  *
  * 画面表示用の位置（%）は、実際の順位決定に使う数値（rawDistance）とは
  * 別に「見た目の接戦感」を演出するための補正（圧縮）をかけている。
@@ -26,9 +28,32 @@ const RaceEngine = (() => {
   /**
    * 馬の総合能力値を 0〜1 のスコアに変換する。
    * Speed を重視しつつ、Stamina / Luck も反映する。
+   * 芝＋雨の場合はスタミナ型がわずかに有利になるよう配分を調整する。
    */
-  function abilityScore(horse) {
-    return (horse.speed * 0.5 + horse.stamina * 0.3 + horse.luck * 0.2) / 100;
+  function abilityScore(horse, course, weather) {
+    let speedWeight = 0.5;
+    let staminaWeight = 0.3;
+    const luckWeight = 0.2;
+
+    if (course.surface === 'turf' && weather.id === 'rainy') {
+      speedWeight -= 0.05;
+      staminaWeight += 0.05;
+    }
+
+    return (horse.speed * speedWeight + horse.stamina * staminaWeight + horse.luck * luckWeight) / 100;
+  }
+
+  /**
+   * コース適性を 0〜1 のスコアに変換する。
+   * ダート＋雨の場合はダート適性の効きをわずかに強める。
+   */
+  function aptitudeScore(horse, course, weather) {
+    const stars = RaceConditions.getAptitude(horse, course);
+    let score = stars / 5;
+    if (course.surface === 'dirt' && weather.id === 'rainy') {
+      score = Math.min(1, score * 1.25);
+    }
+    return score;
   }
 
   /**
@@ -36,6 +61,8 @@ const RaceEngine = (() => {
    *
    * @param {Array} horses 出走馬の配列
    * @param {number} durationSeconds レース時間（秒）
+   * @param {Object} course コース情報（RaceConditions.pickRandomCourse()の戻り値）
+   * @param {Object} weather 天候情報（RaceConditions.pickRandomWeather()の戻り値）
    * @returns {{
    *   totalTicks:number,
    *   ticksPerSecond:number,
@@ -43,7 +70,7 @@ const RaceEngine = (() => {
    *   ranking: Array<{horse:Object, place:number, rawDistance:number}>
    * }}
    */
-  function simulateRace(horses, durationSeconds) {
+  function simulateRace(horses, durationSeconds, course, weather) {
     const totalTicks = Math.max(1, Math.round(durationSeconds * TICKS_PER_SECOND));
     const horseCount = horses.length;
 
@@ -61,11 +88,12 @@ const RaceEngine = (() => {
 
       for (let i = 0; i < horseCount; i++) {
         const horse = horses[i];
-        const ability = abilityScore(horse);
+        const ability = abilityScore(horse, course, weather);
+        const aptitude = aptitudeScore(horse, course, weather);
         const randomComponent = Math.random();
 
-        // 能力60% + ランダム40%
-        let increment = ability * 0.6 + randomComponent * 0.4;
+        // 能力55% + コース適性15% + ランダム30%
+        let increment = ability * 0.55 + aptitude * 0.15 + randomComponent * 0.30;
 
         // Stamina が低い馬はレース後半（progress 0.5〜1.0）に失速しやすい
         if (progressFraction > 0.5) {

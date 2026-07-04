@@ -117,10 +117,35 @@ const Commentary = (() => {
       utterance.lang = 'ja-JP';
       utterance.rate = rate;
       utterance.volume = volume;
-      synth.speak(utterance);
+      // Chromeではcancel()の直後にspeak()すると発話が無視されることが
+      // あるため、1ティック遅らせてから読み上げる。
+      setTimeout(() => {
+        if (!enabled) return;
+        synth.speak(utterance);
+      }, 50);
     } catch (e) {
       // 実況が失敗してもゲーム進行には影響させない
       console.warn('[Commentary] speak failed', e);
+    }
+  }
+
+  let unlocked = false;
+
+  /**
+   * ユーザーの最初のタップ／クリックのタイミングで一度だけ呼び出す。
+   * 無音に近いセリフを一度読み上げておくことで、以降タイマー経由
+   * （ユーザー操作の外）でのspeak()がブロックされないようにする
+   * （スマホのブラウザで特に重要）。
+   */
+  function unlock() {
+    if (unlocked || !supported) return;
+    unlocked = true;
+    try {
+      const utterance = new SpeechSynthesisUtterance(' ');
+      utterance.volume = 0;
+      synth.speak(utterance);
+    } catch (e) {
+      // 無視してよい
     }
   }
 
@@ -152,6 +177,7 @@ const Commentary = (() => {
     speak,
     speakCategory,
     pickLine,
+    unlock,
     setEnabled,
     setRate,
     setVolume,

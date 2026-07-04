@@ -221,6 +221,67 @@ html, body {
 }
 .stat-val { text-align: right; color: var(--color-white); }
 
+.aptitude-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(212, 175, 55, 0.25);
+}
+.aptitude-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.65rem;
+  color: var(--color-muted);
+}
+.aptitude-item.aptitude-active {
+  color: var(--color-gold-light);
+}
+.aptitude-stars {
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  color: rgba(245, 241, 230, 0.4);
+}
+.aptitude-item.aptitude-active .aptitude-stars {
+  color: var(--color-gold-light);
+  text-shadow: 0 0 6px rgba(212, 175, 55, 0.5);
+}
+
+/* ============================================================
+   レース案内板（第Nレース／コース／天候）
+   ============================================================ */
+.race-info {
+  font-family: var(--font-serif);
+  color: var(--color-white);
+  margin-bottom: 16px;
+}
+.race-info-rule {
+  height: 1px;
+  background: var(--color-gold-dark);
+  opacity: 0.6;
+}
+.race-info-row {
+  padding: 6px 0;
+  letter-spacing: 0.05em;
+}
+.race-info-title {
+  color: var(--color-gold-light);
+  font-size: 1.15rem;
+  font-weight: bold;
+}
+.race-info-compact {
+  margin-bottom: 4px;
+}
+.race-info-compact .race-info-row {
+  padding: 2px 0;
+  font-size: 0.8rem;
+}
+.race-info-compact .race-info-title {
+  font-size: 0.95rem;
+}
+
 .btn-skip {
   margin-top: 18px;
 }
