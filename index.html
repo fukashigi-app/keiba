@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FUKASHIGI HORSE RACE</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ トップ画面 ============ -->
+  <section id="screen-top" class="screen active">
+    <div class="top-bg-glow"></div>
+    <h1 class="title">
+      <span class="title-line1">FUKASHIGI</span>
+      <span class="title-line2">HORSE RACE</span>
+    </h1>
+    <div class="menu-buttons">
+      <button id="btn-new-race" class="btn btn-gold">新しいレース</button>
+      <button id="btn-howto" class="btn btn-outline">遊び方</button>
+    </div>
+  </section>
+
+  <!-- ============ 馬紹介画面 ============ -->
+  <section id="screen-lineup" class="screen">
+    <h2 class="screen-title">出走馬紹介</h2>
+    <div id="lineup-timer" class="timer-badge"></div>
+    <div id="lineup-grid" class="lineup-grid"></div>
+    <button id="btn-skip-lineup" class="btn btn-outline btn-skip">投票開始へ進む</button>
+  </section>
+
+  <!-- ============ 投票受付画面 ============ -->
+  <section id="screen-voting" class="screen">
+    <h2 class="voting-heading">投票受付中</h2>
+    <div id="voting-timer" class="voting-timer">90</div>
+    <p class="voting-sub">紙の投票券をご記入ください</p>
+    <div id="voting-ready-message" class="ready-message hidden">まもなくレース開始です...</div>
+  </section>
+
+  <!-- ============ カウントダウン画面 ============ -->
+  <section id="screen-countdown" class="screen">
+    <div id="countdown-number" class="countdown-number"></div>
+  </section>
+
+  <!-- ============ レース画面 ============ -->
+  <section id="screen-race" class="screen">
+    <h2 class="screen-title race-title">RACE!!</h2>
+    <div id="race-track" class="race-track"></div>
+  </section>
+
+  <!-- ============ 結果画面 ============ -->
+  <section id="screen-result" class="screen">
+    <h2 class="screen-title">レース結果</h2>
+    <div id="result-winner" class="result-winner"></div>
+    <div id="result-podium" class="result-podium"></div>
+    <div id="result-list" class="result-list"></div>
+    <button id="btn-restart" class="btn btn-gold">もう一度レース</button>
+  </section>
+
+</div>
+
+<!-- ============ 遊び方モーダル ============ -->
+<div id="modal-howto" class="modal hidden">
+  <div class="modal-content">
+    <h2>遊び方</h2>
+    <ol>
+      <li>「新しいレース」を押すと、ランダムに8頭の馬が登場します。</li>
+      <li>各馬の Speed・Stamina・Luck を見て、紙の投票券にご記入ください。</li>
+      <li>投票受付中に、お手持ちのチップと投票券で参加してください。</li>
+      <li>投票終了後、スタッフの合図でレースがスタートします。</li>
+      <li>ゴール後に結果を発表します。お楽しみください！</li>
+    </ol>
+    <button id="btn-close-howto" class="btn btn-outline">閉じる</button>
+  </div>
+</div>
+
+<!-- ============ 管理画面 ============ -->
+<button id="admin-toggle" class="admin-toggle" title="管理画面">⚙</button>
+<div id="admin-panel" class="admin-panel hidden">
+  <div class="admin-header">
+    <span>管理パネル</span>
+    <button id="admin-close" class="admin-close">✕</button>
+  </div>
+
+  <div class="admin-section">
+    <div class="admin-actions">
+      <button id="admin-new-race" class="btn btn-gold btn-small">新しいレース</button>
+      <button id="admin-start" class="btn btn-gold btn-small">START</button>
+      <button id="admin-reset" class="btn btn-outline btn-small">リセット</button>
+    </div>
+  </div>
+
+  <div class="admin-section">
+    <h3>タイマー（秒）</h3>
+    <label>馬紹介 <input type="number" id="admin-lineup-duration" min="5" step="5"></label>
+    <label>投票受付 <input type="number" id="admin-voting-duration" min="5" step="5"></label>
+    <label>レース時間 <input type="number" id="admin-race-duration" min="10" step="5"></label>
+  </div>
+
+  <div class="admin-section">
+    <h3>演出</h3>
+    <label class="admin-toggle-row"><input type="checkbox" id="admin-commentary-toggle"> 実況</label>
+    <label class="admin-toggle-row"><input type="checkbox" id="admin-bgm-toggle"> BGM</label>
+    <label class="admin-toggle-row"><input type="checkbox" id="admin-se-toggle"> 効果音</label>
+  </div>
+
+  <div class="admin-section">
+    <h3>音量 / 実況速度</h3>
+    <label>音量 <input type="range" id="admin-volume" min="0" max="1" step="0.05"></label>
+    <label>実況速度 <input type="range" id="admin-speech-rate" min="0.5" max="1.5" step="0.05"></label>
+  </div>
+</div>
+
+<script src="js/horseNames.js"></script>
+<script src="js/horseGenerator.js"></script>
+<script src="js/raceEngine.js"></script>
+<script src="js/commentary.js"></script>
+<script src="js/audioManager.js"></script>
+<script src="js/appState.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

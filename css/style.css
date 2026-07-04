@@ -1,0 +1,658 @@
+/* ============================================================
+   style.css
+   高級競馬場をイメージした黒×ゴールドのデザイン。
+   画面は #app 内の .screen を切り替えるシングルページ構成。
+   ============================================================ */
+
+:root {
+  --color-bg: #0a0a0c;
+  --color-bg-2: #111114;
+  --color-gold: #d4af37;
+  --color-gold-light: #f5d878;
+  --color-gold-dark: #9c7a1f;
+  --color-white: #f5f1e6;
+  --color-muted: #a89f8c;
+  --shadow-gold: 0 0 20px rgba(212, 175, 55, 0.35);
+  --font-serif: Georgia, 'Times New Roman', 'Hiragino Mincho ProN', serif;
+  --font-sans: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, #17171b 0%, #050506 80%);
+  color: var(--color-white);
+  font-family: var(--font-sans);
+  overflow: hidden;
+}
+
+#app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+}
+
+.screen.active {
+  display: flex;
+  animation: screenFadeIn 0.6s ease;
+}
+
+@keyframes screenFadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ---------- 共通ボタン ---------- */
+.btn {
+  font-family: var(--font-sans);
+  font-size: 1.1rem;
+  padding: 14px 36px;
+  border-radius: 40px;
+  border: 2px solid var(--color-gold);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(0); }
+
+.btn-gold {
+  background: linear-gradient(180deg, var(--color-gold-light), var(--color-gold-dark));
+  color: #1a1204;
+  box-shadow: var(--shadow-gold);
+  font-weight: bold;
+}
+.btn-outline {
+  background: transparent;
+  color: var(--color-gold-light);
+}
+.btn-small {
+  padding: 8px 18px;
+  font-size: 0.9rem;
+}
+
+.screen-title {
+  font-family: var(--font-serif);
+  color: var(--color-gold-light);
+  font-size: 2rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+  text-shadow: var(--shadow-gold);
+}
+
+.hidden { display: none !important; }
+
+/* ============================================================
+   トップ画面
+   ============================================================ */
+.top-bg-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 40%, rgba(212,175,55,0.12), transparent 60%);
+  pointer-events: none;
+}
+
+.title {
+  font-family: var(--font-serif);
+  margin: 0 0 48px 0;
+  line-height: 1.2;
+}
+.title-line1, .title-line2 {
+  display: block;
+  background: linear-gradient(180deg, var(--color-gold-light), var(--color-gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 40px rgba(212, 175, 55, 0.4);
+}
+.title-line1 { font-size: clamp(1.8rem, 6vw, 3.2rem); letter-spacing: 0.15em; }
+.title-line2 { font-size: clamp(2.6rem, 9vw, 5.5rem); letter-spacing: 0.08em; font-weight: bold; }
+
+.menu-buttons {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ============================================================
+   馬紹介画面
+   ============================================================ */
+.timer-badge {
+  color: var(--color-gold-light);
+  font-size: 1.1rem;
+  margin-bottom: 20px;
+  letter-spacing: 0.05em;
+}
+
+.lineup-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 14px;
+  width: 100%;
+  max-width: 1100px;
+  overflow-y: auto;
+  max-height: 60vh;
+  padding: 4px;
+}
+@media (max-width: 720px) {
+  .lineup-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.horse-card {
+  background: linear-gradient(160deg, #1c1c20, #0d0d10);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: left;
+  animation: cardIn 0.5s ease backwards;
+}
+.horse-card:nth-child(1) { animation-delay: 0.02s; }
+.horse-card:nth-child(2) { animation-delay: 0.08s; }
+.horse-card:nth-child(3) { animation-delay: 0.14s; }
+.horse-card:nth-child(4) { animation-delay: 0.2s; }
+.horse-card:nth-child(5) { animation-delay: 0.26s; }
+.horse-card:nth-child(6) { animation-delay: 0.32s; }
+.horse-card:nth-child(7) { animation-delay: 0.38s; }
+.horse-card:nth-child(8) { animation-delay: 0.44s; }
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.horse-card-number {
+  display: inline-block;
+  background: var(--jersey, var(--color-gold));
+  color: #0a0a0c;
+  font-weight: bold;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  line-height: 26px;
+  text-align: center;
+  margin-bottom: 6px;
+}
+.horse-card-name {
+  font-family: var(--font-serif);
+  color: var(--color-gold-light);
+  font-size: 1.05rem;
+  margin-bottom: 8px;
+}
+.stat-row {
+  display: grid;
+  grid-template-columns: 56px 1fr 28px;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  margin-bottom: 4px;
+}
+.stat-bar {
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  height: 6px;
+  overflow: hidden;
+}
+.stat-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-gold-dark), var(--color-gold-light));
+}
+.stat-val { text-align: right; color: var(--color-white); }
+
+.btn-skip {
+  margin-top: 18px;
+}
+
+/* ============================================================
+   投票受付画面
+   ============================================================ */
+.voting-heading {
+  font-family: var(--font-serif);
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  color: var(--color-gold-light);
+  letter-spacing: 0.1em;
+  animation: pulseGlow 1.6s ease-in-out infinite;
+}
+@keyframes pulseGlow {
+  0%, 100% { text-shadow: 0 0 12px rgba(212,175,55,0.3); }
+  50% { text-shadow: 0 0 32px rgba(212,175,55,0.7); }
+}
+
+.voting-timer {
+  font-family: var(--font-serif);
+  font-size: clamp(4rem, 14vw, 9rem);
+  font-weight: bold;
+  color: var(--color-white);
+  line-height: 1;
+  margin: 12px 0;
+}
+.voting-sub { color: var(--color-muted); }
+.ready-message {
+  margin-top: 16px;
+  color: var(--color-gold-light);
+  font-size: 1.2rem;
+  animation: blink 1s ease-in-out infinite;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ============================================================
+   カウントダウン画面
+   ============================================================ */
+.countdown-number {
+  font-family: var(--font-serif);
+  font-size: clamp(6rem, 24vw, 16rem);
+  font-weight: bold;
+  background: linear-gradient(180deg, var(--color-gold-light), var(--color-gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.countdown-number.pop {
+  animation: countPop 0.75s ease;
+}
+@keyframes countPop {
+  0% { transform: scale(0.4); opacity: 0; }
+  40% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ============================================================
+   レース画面 & 馬の描画
+   ============================================================ */
+.race-title {
+  position: absolute;
+  top: 14px;
+}
+
+.race-track {
+  width: 100%;
+  max-width: 1300px;
+  height: 78vh;
+  max-height: 620px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: repeating-linear-gradient(0deg, #14210f, #14210f 2px, #182714 2px, #182714 42px);
+  border: 2px solid var(--color-gold-dark);
+  border-radius: 8px;
+  padding: 6px 0;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.6);
+}
+
+.lane {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 12.5%;
+  border-bottom: 1px dashed rgba(255,255,255,0.08);
+}
+.lane:last-child { border-bottom: none; }
+
+.lane-number {
+  flex: 0 0 30px;
+  color: var(--color-gold-light);
+  font-weight: bold;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.lane-track {
+  position: relative;
+  flex: 1;
+  height: 100%;
+}
+
+.finish-line {
+  position: absolute;
+  right: 4px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: repeating-linear-gradient(180deg, var(--color-gold-light) 0 6px, #111 6px 12px);
+}
+
+/* --- 馬（CSSシルエット） ---
+   左→右へ走る想定。右側＝頭、左側＝尻尾。 */
+.horse {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 84px;
+  height: 42px;
+  transition: none;
+}
+
+.horse-body {
+  position: absolute;
+  left: 16px;
+  top: 15px;
+  width: 48px;
+  height: 15px;
+  background: var(--jersey, #999);
+  border-radius: 50% 60% 40% 50%;
+  box-shadow: 0 3px 5px rgba(0,0,0,0.5);
+}
+.horse-neck {
+  position: absolute;
+  left: 56px;
+  top: 1px;
+  width: 13px;
+  height: 20px;
+  background: var(--jersey, #999);
+  border-radius: 50% 40% 20% 50%;
+  transform: rotate(24deg);
+}
+.horse-head {
+  position: absolute;
+  left: 66px;
+  top: -3px;
+  width: 20px;
+  height: 10px;
+  background: var(--jersey, #999);
+  border-radius: 15% 60% 60% 30%;
+}
+.horse-ear {
+  position: absolute;
+  left: 68px;
+  top: -9px;
+  width: 4px;
+  height: 8px;
+  background: var(--jersey, #999);
+  border-radius: 60% 60% 10% 10%;
+  transform: rotate(-10deg);
+}
+.horse-tail {
+  position: absolute;
+  left: 2px;
+  top: 10px;
+  width: 18px;
+  height: 8px;
+  background: #201f1c;
+  border-radius: 60% 10% 60% 10%;
+  transform-origin: right center;
+}
+.horse-badge {
+  position: absolute;
+  left: 33px;
+  top: 2px;
+  width: 15px;
+  height: 15px;
+  font-size: 9px;
+  line-height: 15px;
+  text-align: center;
+  border-radius: 50%;
+  background: #0a0a0c;
+  border: 1px solid var(--color-gold-dark);
+  color: var(--color-gold-light);
+  font-weight: bold;
+  z-index: 2;
+}
+.horse-leg {
+  position: absolute;
+  width: 3px;
+  height: 17px;
+  background: #201f1c;
+  top: 27px;
+  border-radius: 2px;
+  transform-origin: top center;
+}
+.leg-back-1  { left: 20px; }
+.leg-back-2  { left: 27px; }
+.leg-front-1 { left: 52px; }
+.leg-front-2 { left: 59px; }
+
+/* 走行中のギャロップアニメーション（脚と尻尾） */
+.horse.running .leg-front-1 { animation: gallopA 0.4s linear infinite; }
+.horse.running .leg-front-2 { animation: gallopB 0.4s linear infinite; }
+.horse.running .leg-back-1  { animation: gallopB 0.4s linear infinite; }
+.horse.running .leg-back-2  { animation: gallopA 0.4s linear infinite; }
+.horse.running .horse-tail  { animation: tailWag 0.5s ease-in-out infinite; }
+.horse.running .horse-body  { animation: bodyBob 0.4s ease-in-out infinite; }
+
+@keyframes gallopA {
+  0%, 100% { transform: rotate(25deg); }
+  50% { transform: rotate(-20deg); }
+}
+@keyframes gallopB {
+  0%, 100% { transform: rotate(-20deg); }
+  50% { transform: rotate(25deg); }
+}
+@keyframes tailWag {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-12deg); }
+}
+@keyframes bodyBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+/* ============================================================
+   結果画面
+   ============================================================ */
+.result-winner {
+  margin-bottom: 20px;
+}
+.winner-label {
+  color: var(--color-muted);
+  letter-spacing: 0.3em;
+  font-size: 0.9rem;
+}
+.winner-number {
+  font-family: var(--font-serif);
+  font-size: clamp(3rem, 10vw, 5rem);
+  color: var(--color-gold-light);
+  font-weight: bold;
+  line-height: 1;
+  text-shadow: var(--shadow-gold);
+}
+.winner-name {
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 5vw, 2.6rem);
+  color: var(--color-white);
+}
+
+.result-podium {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.podium-item {
+  background: linear-gradient(160deg, #1c1c20, #0d0d10);
+  border: 1px solid rgba(212,175,55,0.35);
+  border-radius: 10px;
+  padding: 14px 18px;
+  animation: cardIn 0.5s ease;
+}
+.podium-medal { font-size: 1.8rem; }
+.podium-number {
+  display: inline-block;
+  background: var(--jersey, var(--color-gold));
+  color: #0a0a0c;
+  font-weight: bold;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  margin: 6px 0;
+}
+.podium-name { color: var(--color-gold-light); font-size: 0.95rem; }
+.place-1 { order: 2; transform: scale(1.15); }
+.place-2 { order: 1; }
+.place-3 { order: 3; }
+
+.result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 24px;
+}
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.9rem;
+}
+.result-place { width: 40px; color: var(--color-muted); }
+.result-number {
+  display: inline-block;
+  background: var(--jersey, var(--color-gold));
+  color: #0a0a0c;
+  font-weight: bold;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
+  text-align: center;
+  font-size: 0.8rem;
+}
+.result-name { color: var(--color-white); }
+
+/* ============================================================
+   遊び方モーダル
+   ============================================================ */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal-content {
+  background: linear-gradient(160deg, #1c1c20, #0d0d10);
+  border: 1px solid var(--color-gold);
+  border-radius: 12px;
+  padding: 28px 32px;
+  max-width: 480px;
+  width: 90%;
+  text-align: left;
+}
+.modal-content h2 {
+  color: var(--color-gold-light);
+  font-family: var(--font-serif);
+}
+.modal-content ol {
+  color: var(--color-white);
+  line-height: 1.8;
+  padding-left: 20px;
+}
+.modal-content .btn { margin-top: 12px; }
+
+/* ============================================================
+   管理画面
+   ============================================================ */
+.admin-toggle {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-gold-dark);
+  background: rgba(10,10,12,0.8);
+  color: var(--color-gold-light);
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 300;
+}
+
+.admin-panel {
+  position: fixed;
+  bottom: 70px;
+  right: 16px;
+  width: 300px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: rgba(12,12,14,0.96);
+  border: 1px solid var(--color-gold-dark);
+  border-radius: 10px;
+  padding: 14px 16px;
+  z-index: 300;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--color-gold-light);
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+.admin-close {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.admin-section {
+  border-top: 1px solid rgba(212,175,55,0.2);
+  padding: 10px 0;
+}
+.admin-section:first-of-type { border-top: none; }
+.admin-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  letter-spacing: 0.05em;
+}
+.admin-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.admin-section label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--color-white);
+}
+.admin-section input[type="number"] {
+  width: 70px;
+  background: #1a1a1d;
+  border: 1px solid var(--color-gold-dark);
+  color: var(--color-white);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+.admin-toggle-row { justify-content: flex-start; }
+.admin-section input[type="range"] { flex: 1; }
+
+/* ============================================================
+   レスポンシブ調整
+   ============================================================ */
+@media (max-width: 480px) {
+  .lineup-grid { grid-template-columns: 1fr 1fr; max-height: 55vh; }
+  .admin-panel { width: calc(100vw - 32px); }
+  .result-podium { gap: 10px; }
+}
