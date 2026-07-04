@@ -11,7 +11,9 @@
  */
 
 const UI = (() => {
-  const HORSE_WIDTH_PX = 84;
+  // 馬番ごとの実際の描画幅(px)。馬のサイズは画面幅に応じてCSSで
+  // 自動的に伸縮するため、位置計算にはこの実測値を使う。
+  const horseWidths = {};
 
   // DOM要素はinit()内でまとめて取得する
   let el = {};
@@ -41,6 +43,11 @@ const UI = (() => {
       countdownNumber: document.getElementById('countdown-number'),
 
       raceTrack: document.getElementById('race-track'),
+      commentaryTicker: document.getElementById('commentary-ticker'),
+      raceDistanceFill: document.getElementById('race-distance-fill'),
+      photoFinishOverlay: document.getElementById('photo-finish-overlay'),
+      pfFlash: document.getElementById('pf-flash'),
+      pfText: document.getElementById('pf-text'),
 
       resultWinner: document.getElementById('result-winner'),
       resultPodium: document.getElementById('result-podium'),
@@ -69,6 +76,8 @@ const UI = (() => {
     const target = document.getElementById(`screen-${name}`);
     if (target) target.classList.add('active');
     AppState.runtime.currentScreen = name;
+    // レース中は管理ボタンが馬やゴールラインに被らないよう非表示にする
+    document.body.classList.toggle('race-in-progress', name === 'race');
   }
 
   // ------------------------------------------------------------
@@ -77,6 +86,7 @@ const UI = (() => {
   function startNewRace() {
     AppState.clearAllTimers();
     Commentary.speak('');
+    el.photoFinishOverlay.classList.add('hidden');
     AppState.runtime.horses = HorseGenerator.generateHorses();
     AppState.runtime.raceResult = null;
 
@@ -194,6 +204,7 @@ const UI = (() => {
       lane.innerHTML = `
         <div class="lane-number">${horse.number}</div>
         <div class="lane-track">
+          <div class="start-line"></div>
           <div class="finish-line"></div>
           <div class="horse" id="horse-${horse.number}" style="--jersey:${horse.color}">
             <div class="horse-tail"></div>
@@ -202,8 +213,8 @@ const UI = (() => {
             <div class="horse-leg leg-front-2"></div>
             <div class="horse-leg leg-back-1"></div>
             <div class="horse-leg leg-back-2"></div>
-            <div class="horse-neck"></div>
-            <div class="horse-head"></div>
+            <div class="horse-mane"></div>
+            <div class="horse-neck-head"></div>
             <div class="horse-ear"></div>
             <div class="horse-badge">${horse.number}</div>
           </div>
@@ -211,12 +222,20 @@ const UI = (() => {
       `;
       el.raceTrack.appendChild(lane);
     });
+
+    // 馬のサイズは画面幅に応じてCSSで自動的に伸縮するため、
+    // 描画直後の実測幅を位置計算に使う（レーン単位の右端クランプ用）。
+    horses.forEach((horse) => {
+      const horseEl = document.getElementById(`horse-${horse.number}`);
+      horseWidths[horse.number] = horseEl ? horseEl.offsetWidth : 0;
+    });
   }
 
   function setHorsePosition(number, percent) {
     const horseEl = document.getElementById(`horse-${number}`);
     if (!horseEl) return;
-    horseEl.style.left = `calc((100% - ${HORSE_WIDTH_PX}px) * ${percent / 100})`;
+    const width = horseWidths[number] || 0;
+    horseEl.style.left = `calc((100% - ${width}px) * ${percent / 100})`;
   }
 
   function runRace() {
@@ -225,9 +244,13 @@ const UI = (() => {
     const result = RaceEngine.simulateRace(horses, duration);
     AppState.runtime.raceResult = result;
 
+    // 画面を表示してからDOMを構築する。非表示(display:none)のままだと
+    // 馬要素の実測幅(offsetWidth)が0になってしまうため。
+    showScreen('race');
     renderTrack(horses);
     document.querySelectorAll('.horse').forEach((h) => h.classList.add('running'));
-    showScreen('race');
+    el.commentaryTicker.textContent = '';
+    el.raceDistanceFill.style.width = '0%';
     AudioManager.playBgm('race');
     AudioManager.playSe('hooves');
 
@@ -255,6 +278,8 @@ const UI = (() => {
         const value = currentFrame[i] + (nextFrame[i] - currentFrame[i]) * lerpT;
         setHorsePosition(horse.number, value);
       });
+
+      el.raceDistanceFill.style.width = `${progress * 100}%`;
 
       if (elapsedMs >= nextCommentaryAt && progress < 1) {
         speakForProgress(progress, currentFrame, horses);
@@ -287,26 +312,60 @@ const UI = (() => {
     // 上位2頭の差が僅かなら「接戦」セリフを混ぜる
     const sorted = [...currentFrame].sort((a, b) => b - a);
     const gap = sorted[0] - sorted[1];
+    let text;
     if (gap < 2.5 && Math.random() < 0.5) {
-      Commentary.speakCategory('close', context);
-      return;
-    }
-
-    if (progress < 0.35) {
-      Commentary.speakCategory('early', context);
+      text = Commentary.speakCategory('close', context);
+    } else if (progress < 0.35) {
+      text = Commentary.speakCategory('early', context);
     } else if (progress < 0.75) {
-      Commentary.speakCategory('middle', context);
+      text = Commentary.speakCategory('middle', context);
     } else {
-      Commentary.speakCategory('finalStretch', context);
+      text = Commentary.speakCategory('finalStretch', context);
     }
+    showTicker(text);
   }
 
+  /**
+   * 実況テロップを更新する。音声実況と同じ内容を文字でも表示する。
+   */
+  function showTicker(text) {
+    if (!text) return;
+    el.commentaryTicker.textContent = text;
+    el.commentaryTicker.classList.remove('pop');
+    void el.commentaryTicker.offsetWidth; // アニメーション再トリガー用のreflow
+    el.commentaryTicker.classList.add('pop');
+  }
+
+  /**
+   * ゴール演出：GOAL! → PHOTO FINISH → 結果画面 の順に流す。
+   */
   function finishRace(result) {
     document.querySelectorAll('.horse').forEach((h) => h.classList.remove('running'));
     AudioManager.playSe('goal');
-    Commentary.speakCategory('finishLine');
-    const id = setTimeout(() => showResult(result), 1200);
-    AppState.registerTimer(id);
+    const finishText = Commentary.speakCategory('finishLine');
+    showTicker(finishText);
+
+    el.photoFinishOverlay.classList.remove('hidden');
+    el.pfText.textContent = 'GOAL!';
+    el.pfText.classList.remove('show');
+    el.pfFlash.classList.remove('flash');
+    void el.pfFlash.offsetWidth;
+    el.pfFlash.classList.add('flash');
+    el.pfText.classList.add('show');
+
+    const toPhotoFinish = setTimeout(() => {
+      el.pfText.classList.remove('show');
+      void el.pfText.offsetWidth;
+      el.pfText.textContent = 'PHOTO FINISH';
+      el.pfText.classList.add('show');
+    }, 600);
+    AppState.registerTimer(toPhotoFinish);
+
+    const toResult = setTimeout(() => {
+      el.photoFinishOverlay.classList.add('hidden');
+      showResult(result);
+    }, 1600);
+    AppState.registerTimer(toResult);
   }
 
   // ------------------------------------------------------------
@@ -361,6 +420,7 @@ const UI = (() => {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     AppState.runtime.horses = [];
     AppState.runtime.raceResult = null;
+    el.photoFinishOverlay.classList.add('hidden');
     showScreen('top');
   }
 

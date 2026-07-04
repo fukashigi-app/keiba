@@ -124,8 +124,15 @@ const Commentary = (() => {
     }
   }
 
+  /**
+   * カテゴリからセリフを選んで読み上げる。
+   * 画面へのテロップ表示など、選ばれたテキストを呼び出し元でも
+   * 使えるように返り値として返す。
+   */
   function speakCategory(category, context) {
-    speak(pickLine(category, context));
+    const text = pickLine(category, context);
+    speak(text);
+    return text;
   }
 
   function setEnabled(value) {

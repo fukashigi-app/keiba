@@ -47,9 +47,24 @@
   </section>
 
   <!-- ============ レース画面 ============ -->
-  <section id="screen-race" class="screen">
-    <h2 class="screen-title race-title">RACE!!</h2>
-    <div id="race-track" class="race-track"></div>
+  <section id="screen-race" class="screen screen-race">
+    <div class="race-header">
+      <h2 class="race-title">RACE!!</h2>
+      <div class="race-distance-meter">
+        <span class="race-distance-label">START</span>
+        <div class="race-distance-bar"><div id="race-distance-fill" class="race-distance-fill"></div></div>
+        <span class="race-distance-label">GOAL</span>
+      </div>
+    </div>
+    <div id="commentary-ticker" class="commentary-ticker"></div>
+    <div class="race-track-wrap">
+      <div class="race-bg-lights"></div>
+      <div id="race-track" class="race-track"></div>
+    </div>
+    <div id="photo-finish-overlay" class="photo-finish-overlay hidden">
+      <div id="pf-flash" class="pf-flash"></div>
+      <div id="pf-text" class="pf-text">GOAL!</div>
+    </div>
   </section>
 
   <!-- ============ 結果画面 ============ -->
