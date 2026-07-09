@@ -32,6 +32,7 @@ const UI = (() => {
       btnHowto: document.getElementById('btn-howto'),
       btnCloseHowto: document.getElementById('btn-close-howto'),
       modalHowto: document.getElementById('modal-howto'),
+      btnSoundOn: document.getElementById('btn-sound-on'),
 
       lineupGrid: document.getElementById('lineup-grid'),
       lineupTimer: document.getElementById('lineup-timer'),
@@ -45,6 +46,8 @@ const UI = (() => {
       countdownNumber: document.getElementById('countdown-number'),
 
       raceTrack: document.getElementById('race-track'),
+      raceTrackWrap: document.querySelector('.race-track-wrap'),
+      raceRanking: document.getElementById('race-ranking'),
       commentaryTicker: document.getElementById('commentary-ticker'),
       raceDistanceFill: document.getElementById('race-distance-fill'),
       photoFinishOverlay: document.getElementById('photo-finish-overlay'),
@@ -71,6 +74,20 @@ const UI = (() => {
       startVotingPhase();
     });
     el.btnRestart.addEventListener('click', startNewRace);
+    el.btnSoundOn.addEventListener('click', enableSound);
+  }
+
+  /**
+   * トップ画面の「🔊 音声をONにする」ボタン。
+   * ユーザー操作の中で明示的に音声再生を解錠し、確認のセリフを
+   * 読み上げることで、音が出ているかその場で分かるようにする。
+   */
+  function enableSound() {
+    AudioManager.unlock();
+    Commentary.unlock();
+    Commentary.speak('音声が有効になりました');
+    el.btnSoundOn.textContent = '🔊 音声ON';
+    el.btnSoundOn.classList.add('sound-on');
   }
 
   function showScreen(name) {
@@ -90,6 +107,11 @@ const UI = (() => {
     Commentary.speak('');
     el.photoFinishOverlay.classList.add('hidden');
     AppState.runtime.horses = HorseGenerator.generateHorses();
+    // 「今日の調子」は毎レースごとに変わる一時的な状態のため、
+    // 馬を生成した直後にここで割り当てる。
+    AppState.runtime.horses.forEach((horse) => {
+      horse.condition = RaceConditions.pickRandomCondition();
+    });
     AppState.runtime.raceResult = null;
     AppState.runtime.raceNumber += 1;
     AppState.runtime.course = RaceConditions.pickRandomCourse();
@@ -129,12 +151,18 @@ const UI = (() => {
       card.style.setProperty('--jersey', horse.color);
       const turfHighlight = course && course.surface === 'turf' ? 'aptitude-active' : '';
       const dirtHighlight = course && course.surface === 'dirt' ? 'aptitude-active' : '';
+      const condition = horse.condition || RaceConditions.CONDITION_TIERS[2];
+      const favored = RaceConditions.getFavoredSurfaceLabel(horse);
       card.innerHTML = `
         <div class="horse-card-number">${horse.number}</div>
         <div class="horse-card-name">${horse.name}</div>
         <div class="stat-row"><span>Speed</span><div class="stat-bar"><div class="stat-fill" style="width:${horse.speed}%"></div></div><span class="stat-val">${horse.speed}</span></div>
         <div class="stat-row"><span>Stamina</span><div class="stat-bar"><div class="stat-fill" style="width:${horse.stamina}%"></div></div><span class="stat-val">${horse.stamina}</span></div>
         <div class="stat-row"><span>Luck</span><div class="stat-bar"><div class="stat-fill" style="width:${horse.luck}%"></div></div><span class="stat-val">${horse.luck}</span></div>
+        <div class="badge-row">
+          <span class="condition-pill condition-${condition.id}">調子：${condition.label}</span>
+          <span class="favored-pill">得意：${favored}</span>
+        </div>
         <div class="aptitude-row">
           <div class="aptitude-item ${turfHighlight}"><span>芝</span><span class="aptitude-stars">${RaceConditions.starString(horse.turfAptitude)}</span></div>
           <div class="aptitude-item ${dirtHighlight}"><span>ダート</span><span class="aptitude-stars">${RaceConditions.starString(horse.dirtAptitude)}</span></div>
@@ -266,6 +294,25 @@ const UI = (() => {
     horseEl.style.left = `calc((100% - ${width}px) * ${percent / 100})`;
   }
 
+  /**
+   * 現在の順位サイドバー（広い画面のみ表示）を更新する。
+   */
+  function updateRaceRanking(currentFrame, horses) {
+    const ranked = horses
+      .map((horse, i) => ({ horse, value: currentFrame[i] }))
+      .sort((a, b) => b.value - a.value);
+
+    el.raceRanking.innerHTML = `
+      <div class="race-ranking-title">順位</div>
+      ${ranked.map((entry, i) => `
+        <div class="race-ranking-item">
+          <span class="race-ranking-pos">${i + 1}</span>
+          <span class="race-ranking-badge" style="--jersey:${entry.horse.color}">${entry.horse.number}</span>
+        </div>
+      `).join('')}
+    `;
+  }
+
   function runRace() {
     const horses = AppState.runtime.horses;
     const duration = AppState.settings.raceDuration;
@@ -280,13 +327,16 @@ const UI = (() => {
     document.querySelectorAll('.horse').forEach((h) => h.classList.add('running'));
     el.commentaryTicker.textContent = '';
     el.raceDistanceFill.style.width = '0%';
+    el.raceTrackWrap.classList.remove('final-stretch');
     AudioManager.playBgm('race');
-    AudioManager.playSe('hooves');
+    AudioManager.playSe('running');
 
     const startTime = performance.now();
     let nextCommentaryAt = 1200; // ms
+    let nextRankingUpdateAt = 0; // ms
     let hooveSePlayed = false;
     let cheerPlayed = false;
+    let finalStretchStarted = false;
 
     function frame(now) {
       const elapsedMs = now - startTime;
@@ -310,6 +360,11 @@ const UI = (() => {
 
       el.raceDistanceFill.style.width = `${progress * 100}%`;
 
+      if (elapsedMs >= nextRankingUpdateAt) {
+        updateRaceRanking(currentFrame, horses);
+        nextRankingUpdateAt = elapsedMs + 300;
+      }
+
       if (elapsedMs >= nextCommentaryAt && progress < 1) {
         speakForProgress(progress, currentFrame, horses);
         nextCommentaryAt = elapsedMs + 1800 + Math.random() * 1800;
@@ -321,7 +376,13 @@ const UI = (() => {
       }
       if (progress > 0.85 && !hooveSePlayed) {
         hooveSePlayed = true;
-        AudioManager.playSe('hooves');
+        AudioManager.playSe('running');
+      }
+
+      // 最後の直線：トラックをわずかにズーム＆点滅させて盛り上げる
+      if (progress > 0.85 && !finalStretchStarted) {
+        finalStretchStarted = true;
+        el.raceTrackWrap.classList.add('final-stretch');
       }
 
       if (progress < 1) {
@@ -404,7 +465,7 @@ const UI = (() => {
   function showResult(result) {
     AudioManager.stopBgm();
     AudioManager.playBgm('result');
-    AudioManager.playSe('result');
+    AudioManager.playSe('fanfare');
     showScreen('result');
 
     const ranking = result.ranking;

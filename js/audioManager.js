@@ -13,18 +13,18 @@
 
 const AudioManager = (() => {
   const BGM_FILES = {
-    pre: 'assets/audio/bgm_pre.mp3',
-    race: 'assets/audio/bgm_race.mp3',
-    result: 'assets/audio/bgm_result.mp3',
+    pre: 'assets/audio/bgm-pre.mp3',
+    race: 'assets/audio/bgm-race.mp3',
+    result: 'assets/audio/bgm-result.mp3',
   };
 
   const SE_FILES = {
-    start: 'assets/audio/se_start.mp3',
-    gate: 'assets/audio/se_gate.mp3',
-    hooves: 'assets/audio/se_hooves.mp3',
-    cheer: 'assets/audio/se_cheer.mp3',
-    goal: 'assets/audio/se_goal.mp3',
-    result: 'assets/audio/se_result.mp3',
+    start: 'assets/audio/start.mp3',
+    gate: 'assets/audio/gate.mp3',
+    running: 'assets/audio/running.mp3',
+    cheer: 'assets/audio/cheer.mp3',
+    goal: 'assets/audio/goal.mp3',
+    fanfare: 'assets/audio/fanfare.mp3',
   };
 
   // 同じ効果音を連続再生できるよう、キーごとに複数のAudio要素を

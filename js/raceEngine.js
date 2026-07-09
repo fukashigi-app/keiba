@@ -29,6 +29,7 @@ const RaceEngine = (() => {
    * 馬の総合能力値を 0〜1 のスコアに変換する。
    * Speed を重視しつつ、Stamina / Luck も反映する。
    * 芝＋雨の場合はスタミナ型がわずかに有利になるよう配分を調整する。
+   * 「今日の調子」（horse.condition）による補正（±15%程度）も反映する。
    */
   function abilityScore(horse, course, weather) {
     let speedWeight = 0.5;
@@ -40,7 +41,9 @@ const RaceEngine = (() => {
       staminaWeight += 0.05;
     }
 
-    return (horse.speed * speedWeight + horse.stamina * staminaWeight + horse.luck * luckWeight) / 100;
+    const base = (horse.speed * speedWeight + horse.stamina * staminaWeight + horse.luck * luckWeight) / 100;
+    const conditionMultiplier = horse.condition ? horse.condition.abilityMultiplier : 1;
+    return base * conditionMultiplier;
   }
 
   /**
@@ -105,14 +108,19 @@ const RaceEngine = (() => {
         // 勢いの波：一定確率で加速／失速が数ティック続く。Luckが高いほど
         // 加速側に振れやすく、大きく伸びる。誰にでも起こり得るため、
         // 終盤どころかレース全体を通じて先頭が入れ替わり続ける。
+        // 「大穴気配」の馬は素の能力は控えめだが、この勢いの波が
+        // 起きやすく・大きくなる（一発大逆転のある"穴馬"らしさ）。
+        const isWildcard = !!(horse.condition && horse.condition.wildcard);
+        const surgeChance = isWildcard ? 0.06 : 0.035;
         const surge = surgeState[i];
         if (surge.ticksRemaining > 0) {
           increment *= surge.multiplier;
           surge.ticksRemaining -= 1;
-        } else if (Math.random() < 0.035) {
+        } else if (Math.random() < surgeChance) {
           const isSpurt = Math.random() < 0.4 + (horse.luck / 100) * 0.3;
+          const spurtCeiling = isWildcard ? 0.9 : 0.7;
           surge.multiplier = isSpurt
-            ? 1.5 + (horse.luck / 100) * 0.7 // 加速: 約1.5〜2.2倍
+            ? 1.5 + (horse.luck / 100) * spurtCeiling // 加速: 約1.5〜2.2倍（大穴は最大2.4倍）
             : 0.25 + Math.random() * 0.3; // 失速: 約0.25〜0.55倍
           surge.ticksRemaining = 8 + Math.floor(Math.random() * 10); // 0.8〜1.8秒持続
           increment *= surge.multiplier;

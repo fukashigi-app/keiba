@@ -12,15 +12,18 @@
 
   <!-- ============ トップ画面 ============ -->
   <section id="screen-top" class="screen active">
-    <div class="top-bg-glow"></div>
+    <div class="top-sun"></div>
+    <div class="top-cloud top-cloud-1"></div>
+    <div class="top-cloud top-cloud-2"></div>
     <h1 class="title">
       <span class="title-line1">FUKASHIGI</span>
       <span class="title-line2">HORSE RACE</span>
     </h1>
     <div class="menu-buttons">
-      <button id="btn-new-race" class="btn btn-gold">新しいレース</button>
+      <button id="btn-new-race" class="btn btn-primary">新しいレース</button>
       <button id="btn-howto" class="btn btn-outline">遊び方</button>
     </div>
+    <button id="btn-sound-on" class="btn-sound">🔊 音声をONにする</button>
   </section>
 
   <!-- ============ 馬紹介画面 ============ -->
@@ -59,9 +62,19 @@
       </div>
     </div>
     <div id="commentary-ticker" class="commentary-ticker"></div>
-    <div class="race-track-wrap">
-      <div class="race-bg-lights"></div>
-      <div id="race-track" class="race-track"></div>
+    <div class="race-main">
+      <div class="race-track-wrap">
+        <div class="race-bg-lights"></div>
+        <div class="race-sky">
+          <div class="race-cloud race-cloud-1"></div>
+          <div class="race-cloud race-cloud-2"></div>
+        </div>
+        <div class="race-grandstand"></div>
+        <div class="race-flag race-flag-start">🚩</div>
+        <div class="race-flag race-flag-goal">🏁</div>
+        <div id="race-track" class="race-track"></div>
+      </div>
+      <div id="race-ranking" class="race-ranking"></div>
     </div>
     <div id="photo-finish-overlay" class="photo-finish-overlay hidden">
       <div id="pf-flash" class="pf-flash"></div>
@@ -70,12 +83,14 @@
   </section>
 
   <!-- ============ 結果画面 ============ -->
-  <section id="screen-result" class="screen">
-    <h2 class="screen-title">レース結果</h2>
-    <div id="result-winner" class="result-winner"></div>
-    <div id="result-podium" class="result-podium"></div>
-    <div id="result-list" class="result-list"></div>
-    <button id="btn-restart" class="btn btn-gold">もう一度レース</button>
+  <section id="screen-result" class="screen screen-result">
+    <div class="scoreboard">
+      <h2 class="scoreboard-title">レース結果</h2>
+      <div id="result-winner" class="result-winner"></div>
+      <div id="result-podium" class="result-podium"></div>
+      <div id="result-list" class="result-list"></div>
+    </div>
+    <button id="btn-restart" class="btn btn-primary">もう一度レース</button>
   </section>
 
 </div>
@@ -105,8 +120,8 @@
 
   <div class="admin-section">
     <div class="admin-actions">
-      <button id="admin-new-race" class="btn btn-gold btn-small">新しいレース</button>
-      <button id="admin-start" class="btn btn-gold btn-small">START</button>
+      <button id="admin-new-race" class="btn btn-primary btn-small">新しいレース</button>
+      <button id="admin-start" class="btn btn-primary btn-small">START</button>
       <button id="admin-reset" class="btn btn-outline btn-small">リセット</button>
     </div>
   </div>
