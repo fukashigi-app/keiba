@@ -183,8 +183,8 @@ const UI = (() => {
         <div class="horse-card-illust">
           <span class="horse-card-emoji">🐴</span>
           <img class="horse-card-img" alt="">
+          <div class="horse-card-number">${horse.number}</div>
         </div>
-        <div class="horse-card-number">${horse.number}</div>
         <div class="horse-card-name">${horse.name}</div>
         <div class="stat-row"><span>Speed</span><div class="stat-bar"><div class="stat-fill" style="width:${horse.speed}%"></div></div><span class="stat-val">${horse.speed}</span></div>
         <div class="stat-row"><span>Stamina</span><div class="stat-bar"><div class="stat-fill" style="width:${horse.stamina}%"></div></div><span class="stat-val">${horse.stamina}</span></div>
@@ -238,9 +238,9 @@ const UI = (() => {
     let remaining = AppState.settings.votingDuration;
     el.votingTimer.textContent = remaining;
 
-    // 残り10秒／5秒のアナウンスは、それぞれ一度だけ発生させる。
+    // 残り10秒／0秒のアナウンスは、それぞれ一度だけ発生させる。
     let announced10 = false;
-    let announced5 = false;
+    let announcedEnd = false;
 
     const id = setInterval(() => {
       remaining -= 1;
@@ -250,17 +250,18 @@ const UI = (() => {
         announced10 = true;
         announceVotingEnd('まもなく投票終了です', 'まもなく投票終了です。投票券の記入を完了してください。');
       }
-      if (remaining === 5 && !announced5) {
-        announced5 = true;
-        announceVotingEnd('投票終了です', '投票終了です。');
-      }
 
       if (remaining <= 0) {
         clearInterval(id);
-        el.votingHeading.textContent = '投票終了！';
+        if (!announcedEnd) {
+          announcedEnd = true;
+          el.votingHeading.textContent = '投票終了！';
+          announceVotingEnd('投票終了です', '投票終了です。');
+        }
         AudioManager.fadeOutBgm(600);
-        // 投票終了 → 自動的にカウントダウンへ進み、そのままレースを開始する
-        const toCountdown = setTimeout(runCountdownThenRace, 600);
+        // 投票終了アナウンスが聞こえる猶予を置いてから、
+        // 自動的にカウントダウンへ進み、そのままレースを開始する
+        const toCountdown = setTimeout(runCountdownThenRace, 1200);
         AppState.registerTimer(toCountdown);
       }
     }, 1000);
@@ -325,17 +326,27 @@ const UI = (() => {
   /**
    * 楕円トラックの内外レーンオフセットを馬の頭数ぶん計算する。
    * offsetはRaceTrackGeometryの半径に加算する値（マイナス＝内側寄り）。
-   * 常に0より内側に収めることで、トラック外枠(Rc)からはみ出さないようにする。
+   *
+   * 馬自体の見た目のサイズ(horseHeightPx)を考慮せずに余白を決めると、
+   * 小さい画面（Rcが小さい）では馬の見た目がトラック外枠や内馬場に
+   * はみ出して見切れてしまう。そのため馬の半径ぶんの余白(clearance)を
+   * 必ず確保したうえで、外枠・内馬場の余白を決める。
    */
-  function computeLaneOffsets(count, Rc) {
-    const outerMargin = Math.max(10, Rc * 0.06); // 一番外側の馬でも外枠に触れない余白
-    const innerMargin = Math.max(24, Rc * 0.32); // 一番内側の馬でも内馬場に重ならない余白
+  function computeLaneOffsets(count, Rc, horseHeightPx) {
+    // 馬シルエットは幅=高さの2倍で、コーナーでは進行方向に応じて
+    // どの向きにも傾き得るため、中心から一番遠い角（半対角線）を
+    // 基準に余白を確保する。半対角線 ≈ horseHeightPx×√1.25 に、
+    // 最終直線の拡大演出(scale 1.02)の分の余裕も乗せておく。
+    const clearance = horseHeightPx * 1.2;
+    const outerMargin = Math.min(Rc * 0.5, Math.max(clearance + 6, Rc * 0.06));
+    let innerMargin = Math.max(clearance + 20, Rc * 0.34);
+    innerMargin = Math.min(innerMargin, Rc * 0.85); // 内馬場が潰れて負値化しないための安全上限
     const offsets = [];
     for (let i = 0; i < count; i++) {
       const t = count === 1 ? 0.5 : i / (count - 1);
       offsets.push(-innerMargin + (innerMargin - outerMargin) * t);
     }
-    return offsets;
+    return { offsets, outerMargin, innerMargin };
   }
 
   function renderTrack(horses, course) {
@@ -349,12 +360,13 @@ const UI = (() => {
 
     const horseHeightPx = Math.max(16, Math.min(46, trackGeo.Rc * 0.3));
     el.raceTrack.style.setProperty('--horse-h', `${horseHeightPx}px`);
-    el.raceTrack.style.setProperty('--infield-inset', `${trackGeo.Rc * 0.62}px`);
 
-    const offsets = computeLaneOffsets(horses.length, trackGeo.Rc);
+    const { offsets, outerMargin, innerMargin } = computeLaneOffsets(horses.length, trackGeo.Rc, horseHeightPx);
     horses.forEach((horse, i) => {
       laneOffsetByNumber[horse.number] = offsets[i];
     });
+    // 内馬場は、一番内側のレーンよりさらに内側（余白ぶん引いた位置）に収める。
+    el.raceTrack.style.setProperty('--infield-inset', `${Math.max(10, trackGeo.Rc - innerMargin + 10)}px`);
 
     el.ovalHorses.innerHTML = '';
     horses.forEach((horse) => {
@@ -404,18 +416,15 @@ const UI = (() => {
     const finishPoint = RaceTrackGeometry.getPosition(0, trackGeo, midOffset);
     el.ovalFinishLine.style.left = `${wrapW / 2 + finishPoint.x}px`;
     el.ovalFinishLine.style.top = `${wrapH / 2 + finishPoint.y}px`;
-    el.ovalFinishLine.style.height = `${innerToOuterSpan(trackGeo.Rc)}px`;
-    el.ovalFinishLine.style.transform = `translate(-50%, -50%) rotate(${finishPoint.angleDeg + 90}deg)`;
+    el.ovalFinishLine.style.height = `${(innerMargin - outerMargin) + horseHeightPx}px`;
+    // このバーは幅5px・高さ大の「縦棒」として定義してあるため、進行方向
+    // (angleDeg)に対してそのまま回転させれば進行方向と垂直（コースを
+    // 横切る向き）になる（+90すると逆に進行方向と平行になってしまう）。
+    el.ovalFinishLine.style.transform = `translate(-50%, -50%) rotate(${finishPoint.angleDeg}deg)`;
 
     // 雨の日は水しぶきで足元が見えにくくなるため、track-wrap全体に
     // 雨エフェクトを重ねる。
     el.raceRain.classList.toggle('hidden', !(AppState.runtime.weather && AppState.runtime.weather.id === 'rainy'));
-  }
-
-  function innerToOuterSpan(Rc) {
-    const outerMargin = Math.max(10, Rc * 0.06);
-    const innerMargin = Math.max(24, Rc * 0.32);
-    return (Rc - outerMargin) - (Rc - innerMargin) + 30;
   }
 
   function setHorsePosition(number, percent) {
@@ -432,7 +441,7 @@ const UI = (() => {
     const angleRad = (pos.angleDeg * Math.PI) / 180;
     const facingLeft = Math.cos(angleRad) < 0;
     const flip = facingLeft ? -1 : 1;
-    const bank = Math.sin(angleRad) * (facingLeft ? -16 : 16);
+    const bank = Math.sin(angleRad) * (facingLeft ? -10 : 10);
     horseEl.style.transform = `scaleX(${flip}) rotate(${bank}deg)`;
   }
 
