@@ -598,16 +598,6 @@ html, body {
 }
 .race-course-info b { color: var(--color-accent-red); }
 
-.audio-missing-indicator {
-  flex: 0 0 auto;
-  width: 100%;
-  max-width: 1300px;
-  text-align: center;
-  font-size: 0.7rem;
-  color: var(--color-muted);
-  margin-bottom: 2px;
-}
-
 .commentary-ticker {
   flex: 0 0 auto;
   width: 100%;

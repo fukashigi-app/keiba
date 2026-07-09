@@ -56,7 +56,6 @@ const UI = (() => {
       raceTrackWrap: document.querySelector('.race-track-wrap'),
       raceRanking: document.getElementById('race-ranking'),
       raceCourseInfo: document.getElementById('race-course-info'),
-      audioMissingIndicator: document.getElementById('audio-missing-indicator'),
       raceRain: document.getElementById('race-rain'),
       commentaryTicker: document.getElementById('commentary-ticker'),
       raceDistanceFill: document.getElementById('race-distance-fill'),
@@ -456,17 +455,6 @@ const UI = (() => {
     `;
   }
 
-  /**
-   * 音源ファイルが1つも読み込めていない場合に、レース画面に
-   * 小さな「音源未設定」インジケーターを表示する（エラーにはしない）。
-   */
-  function updateAudioMissingIndicator() {
-    const diag = AudioManager.getDiagnostics();
-    const relevantKeys = ['bgm:race', 'se:start', 'se:goal'];
-    const allMissing = relevantKeys.every((key) => diag.fileStatus[key] === 'missing');
-    el.audioMissingIndicator.classList.toggle('hidden', !allMissing);
-  }
-
   function runRace() {
     const horses = AppState.runtime.horses;
     const duration = AppState.settings.raceDuration;
@@ -485,7 +473,6 @@ const UI = (() => {
     el.raceTrackWrap.classList.remove('final-stretch');
     AudioManager.playBgm('race');
     AudioManager.playSe('running');
-    updateAudioMissingIndicator();
 
     const startTime = performance.now();
     let nextCommentaryAt = 1200; // ms

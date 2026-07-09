@@ -59,6 +59,11 @@ const Admin = (() => {
   function bindEvents() {
     el.toggleBtn.addEventListener('click', () => {
       el.panel.classList.toggle('hidden');
+      // パネルを開くたびに現在の音声状態を表示する（本番中に音が出ない
+      // 場合の原因調査は管理パネル内だけで完結させ、一般画面には出さない）。
+      if (!el.panel.classList.contains('hidden')) {
+        showAudioDiagnostics();
+      }
     });
     el.closeBtn.addEventListener('click', () => {
       el.panel.classList.add('hidden');
