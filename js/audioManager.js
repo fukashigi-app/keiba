@@ -37,6 +37,7 @@ const AudioManager = (() => {
   let seEnabled = true;
   let masterVolume = 0.7;
   let unlocked = false;
+  let audioContext = null;
 
   let currentBgm = null;
   let currentBgmKey = null;
@@ -45,41 +46,58 @@ const AudioManager = (() => {
   const sePools = {};
   const sePoolIndex = {};
 
+  // 各音源ファイルが実際に読み込めたかどうか（音声デバッグ表示用）。
+  // 'unknown'（未確定）→ 'ok'（読み込めた）／'missing'（見つからない）。
+  const fileStatus = {};
+
   /**
    * Audio要素を作成する。読み込みエラーが出ても例外を投げず、
    * 単に「使えない音源」として扱う（ゲーム進行には影響しない）。
    */
-  function createAudio(src, loop) {
+  function createAudio(src, loop, statusKey) {
     const audio = new Audio();
+    fileStatus[statusKey] = 'unknown';
+    audio.addEventListener('error', () => {
+      audio.dataset.unavailable = 'true';
+      fileStatus[statusKey] = 'missing';
+    });
+    audio.addEventListener('canplaythrough', () => {
+      fileStatus[statusKey] = 'ok';
+    }, { once: true });
     audio.src = src;
     audio.loop = loop;
     audio.preload = 'auto';
-    audio.addEventListener('error', () => {
-      audio.dataset.unavailable = 'true';
-    });
     return audio;
   }
 
   function init() {
     Object.entries(BGM_FILES).forEach(([key, src]) => {
-      bgmElements[key] = createAudio(src, true);
+      bgmElements[key] = createAudio(src, true, `bgm:${key}`);
     });
     Object.entries(SE_FILES).forEach(([key, src]) => {
-      sePools[key] = Array.from({ length: SE_POOL_SIZE }, () => createAudio(src, false));
+      sePools[key] = Array.from({ length: SE_POOL_SIZE }, () => createAudio(src, false, `se:${key}`));
       sePoolIndex[key] = 0;
     });
   }
+
+  // 直近のplay()失敗理由（音声デバッグ表示用）。'NotAllowedError'なら
+  // ブラウザの自動再生制限でブロックされた可能性が高い。
+  let lastPlayError = null;
 
   function safePlay(audio) {
     if (!audio || audio.dataset.unavailable === 'true') return;
     try {
       const playPromise = audio.play();
       if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch(() => {
-          // 音源未配置・ブラウザのオートプレイ制限などで再生できない場合は無視する
-        });
+        playPromise
+          .then(() => { lastPlayError = null; })
+          .catch((err) => {
+            // 音源未配置・ブラウザのオートプレイ制限などで再生できない場合は無視する
+            lastPlayError = (err && err.name) || 'unknown';
+          });
       }
     } catch (e) {
+      lastPlayError = (e && e.name) || 'unknown';
       // 一部ブラウザでは無効な音源に対しplay()が同期的に例外を投げるため捕捉する
     }
   }
@@ -93,6 +111,22 @@ const AudioManager = (() => {
   function unlock() {
     if (unlocked) return;
     unlocked = true;
+
+    // Web Audio の AudioContext もユーザー操作の中で明示的に生成・resume()
+    // しておく（iOS Safari 等ではこれが「サスペンド状態」のまま残っていると
+    // 音声全般が抑制されることがあるため）。
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx && !audioContext) {
+        audioContext = new Ctx();
+      }
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+    } catch (e) {
+      // AudioContext が使えない環境でもゲームは続行できるため無視する
+    }
+
     const allAudios = [
       ...Object.values(bgmElements),
       ...Object.values(sePools).flat(),
@@ -154,6 +188,34 @@ const AudioManager = (() => {
     if (currentBgm) currentBgm.volume = masterVolume;
   }
 
+  /**
+   * 管理画面の音声デバッグ用に、現在の状態をまとめて返す。
+   * 「音が出ない場合の原因候補」を判定するために使う。
+   */
+  function getDiagnostics() {
+    return {
+      unlocked,
+      bgmEnabled,
+      seEnabled,
+      volume: masterVolume,
+      audioContextState: audioContext ? audioContext.state : 'none',
+      fileStatus: { ...fileStatus },
+      lastPlayError,
+    };
+  }
+
+  /** 管理画面の「BGMテスト」ボタンから呼ばれる。 */
+  function testBgm() {
+    lastPlayError = null;
+    playBgm('race');
+  }
+
+  /** 管理画面の「効果音テスト」ボタンから呼ばれる。 */
+  function testSe() {
+    lastPlayError = null;
+    playSe('start');
+  }
+
   return {
     init,
     unlock,
@@ -163,5 +225,9 @@ const AudioManager = (() => {
     setBgmEnabled,
     setSeEnabled,
     setVolume,
+    getDiagnostics,
+    testBgm,
+    testSe,
+    isUnlocked: () => unlocked,
   };
 })();

@@ -48,6 +48,8 @@ const UI = (() => {
       raceTrack: document.getElementById('race-track'),
       raceTrackWrap: document.querySelector('.race-track-wrap'),
       raceRanking: document.getElementById('race-ranking'),
+      raceCourseInfo: document.getElementById('race-course-info'),
+      raceRain: document.getElementById('race-rain'),
       commentaryTicker: document.getElementById('commentary-ticker'),
       raceDistanceFill: document.getElementById('race-distance-fill'),
       photoFinishOverlay: document.getElementById('photo-finish-overlay'),
@@ -133,9 +135,23 @@ const UI = (() => {
     infoEl.innerHTML = `
       <div class="race-info-rule"></div>
       <div class="race-info-row race-info-title">第${raceNumber}レース</div>
-      <div class="race-info-row">コース：${course.label}</div>
+      <div class="race-info-row">コース：${course.surfaceLabel}</div>
+      <div class="race-info-row">馬場：${course.conditionLabel}</div>
       <div class="race-info-row">天候：${weather.label}</div>
       <div class="race-info-rule"></div>
+    `;
+  }
+
+  /**
+   * レース画面上部に表示するコンパクトなコース情報バーを描画する。
+   */
+  function renderRaceCourseInfo(infoEl) {
+    const { raceNumber, course, weather } = AppState.runtime;
+    infoEl.innerHTML = `
+      <span>第<b>${raceNumber}</b>レース</span>
+      <span>コース：<b>${course.surfaceLabel}</b></span>
+      <span>馬場：<b>${course.conditionLabel}</b></span>
+      <span>天候：<b>${weather.label}</b></span>
     `;
   }
 
@@ -151,8 +167,11 @@ const UI = (() => {
       card.style.setProperty('--jersey', horse.color);
       const turfHighlight = course && course.surface === 'turf' ? 'aptitude-active' : '';
       const dirtHighlight = course && course.surface === 'dirt' ? 'aptitude-active' : '';
+      const heavyHighlight = course && course.condition === 'heavy' ? 'aptitude-active' : '';
       const condition = horse.condition || RaceConditions.CONDITION_TIERS[2];
       const favored = RaceConditions.getFavoredSurfaceLabel(horse);
+      const style = horse.runningStyle || RaceConditions.RUNNING_STYLES[1];
+      const compatComment = course ? RaceConditions.getCompatibilityComment(horse, course) : '';
       card.innerHTML = `
         <div class="horse-card-number">${horse.number}</div>
         <div class="horse-card-name">${horse.name}</div>
@@ -162,11 +181,14 @@ const UI = (() => {
         <div class="badge-row">
           <span class="condition-pill condition-${condition.id}">調子：${condition.label}</span>
           <span class="favored-pill">得意：${favored}</span>
+          <span class="style-pill style-${style.id}">脚質：${style.label}</span>
         </div>
         <div class="aptitude-row">
           <div class="aptitude-item ${turfHighlight}"><span>芝</span><span class="aptitude-stars">${RaceConditions.starString(horse.turfAptitude)}</span></div>
           <div class="aptitude-item ${dirtHighlight}"><span>ダート</span><span class="aptitude-stars">${RaceConditions.starString(horse.dirtAptitude)}</span></div>
+          <div class="aptitude-item ${heavyHighlight}"><span>重馬場</span><span class="aptitude-stars">${RaceConditions.starString(horse.heavyAptitude)}</span></div>
         </div>
+        ${compatComment ? `<div class="compat-comment">${compatComment}</div>` : ''}
       `;
       gridEl.appendChild(card);
     });
@@ -252,7 +274,9 @@ const UI = (() => {
     step();
   }
 
-  function renderTrack(horses) {
+  function renderTrack(horses, course) {
+    const isDirt = course && course.surface === 'dirt';
+    el.raceTrack.className = `race-track surface-${course ? course.surface : 'turf'} condition-${course ? course.condition : 'good'}`;
     el.raceTrack.innerHTML = '';
     horses.forEach((horse) => {
       const lane = document.createElement('div');
@@ -262,7 +286,9 @@ const UI = (() => {
         <div class="lane-track">
           <div class="start-line"></div>
           <div class="finish-line"></div>
-          <div class="horse" id="horse-${horse.number}" style="--jersey:${horse.color}">
+          <div class="horse${isDirt ? ' dust-active' : ''}" id="horse-${horse.number}" style="--jersey:${horse.color}">
+            <div class="dust-puff dust-puff-1"></div>
+            <div class="dust-puff dust-puff-2"></div>
             <div class="horse-tail"></div>
             <div class="horse-body"></div>
             <div class="horse-leg leg-front-1"></div>
@@ -272,12 +298,33 @@ const UI = (() => {
             <div class="horse-mane"></div>
             <div class="horse-neck-head"></div>
             <div class="horse-ear"></div>
+            <div class="horse-eye"></div>
+            <div class="horse-cheek"></div>
+            <img class="horse-image" alt="">
             <div class="horse-badge">${horse.number}</div>
           </div>
         </div>
       `;
       el.raceTrack.appendChild(lane);
     });
+
+    // 差し替え可能な馬イラスト（assets/images/horseN.png）。読み込めた
+    // 場合だけ表示し、無い場合はCSSシルエットのまま表示を続ける。
+    horses.forEach((horse) => {
+      const img = document.querySelector(`#horse-${horse.number} .horse-image`);
+      if (!img) return;
+      img.addEventListener('load', () => {
+        document.getElementById(`horse-${horse.number}`).classList.add('has-image');
+      });
+      img.addEventListener('error', () => {
+        img.removeAttribute('src');
+      });
+      img.src = `assets/images/horse${horse.number}.png`;
+    });
+
+    // 雨の日は水しぶきで足元が見えにくくなるため、track-wrap全体に
+    // 雨エフェクトを重ねる。
+    el.raceRain.classList.toggle('hidden', !(AppState.runtime.weather && AppState.runtime.weather.id === 'rainy'));
 
     // 馬のサイズは画面幅に応じてCSSで自動的に伸縮するため、
     // 描画直後の実測幅を位置計算に使う（レーン単位の右端クランプ用）。
@@ -323,7 +370,8 @@ const UI = (() => {
     // 画面を表示してからDOMを構築する。非表示(display:none)のままだと
     // 馬要素の実測幅(offsetWidth)が0になってしまうため。
     showScreen('race');
-    renderTrack(horses);
+    renderRaceCourseInfo(el.raceCourseInfo);
+    renderTrack(horses, course);
     document.querySelectorAll('.horse').forEach((h) => h.classList.add('running'));
     el.commentaryTicker.textContent = '';
     el.raceDistanceFill.style.width = '0%';
@@ -394,10 +442,19 @@ const UI = (() => {
     AppState.runtime.animationFrameId = requestAnimationFrame(frame);
   }
 
+  // 脚質ID → 実況カテゴリ名
+  const STYLE_COMMENTARY_CATEGORY = {
+    nige: 'styleNige',
+    senko: 'styleSenko',
+    sashi: 'styleSashi',
+    oikomi: 'styleOikomi',
+  };
+
   function speakForProgress(progress, currentFrame, horses) {
     const leaderIndex = RaceEngine.getLeaderIndex(currentFrame);
     const leader = horses[leaderIndex];
     const context = { number: leader.number, name: leader.name };
+    const course = AppState.runtime.course;
 
     // 上位2頭の差が僅かなら「接戦」セリフを混ぜる
     const sorted = [...currentFrame].sort((a, b) => b - a);
@@ -405,6 +462,12 @@ const UI = (() => {
     let text;
     if (gap < 2.5 && Math.random() < 0.5) {
       text = Commentary.speakCategory('close', context);
+    } else if (course && course.condition === 'heavy' && progress > 0.4 && Math.random() < 0.25) {
+      // 重馬場では、展開とは別に「足元が重い」実況を時々混ぜる
+      text = Commentary.speakCategory('heavyStruggle');
+    } else if (leader.runningStyle && Math.random() < 0.5) {
+      // 先頭馬の脚質に合わせた実況を優先的に混ぜる
+      text = Commentary.speakCategory(STYLE_COMMENTARY_CATEGORY[leader.runningStyle.id], context);
     } else if (progress < 0.35) {
       text = Commentary.speakCategory('early', context);
     } else if (progress < 0.75) {
@@ -469,6 +532,7 @@ const UI = (() => {
     showScreen('result');
 
     const ranking = result.ranking;
+    const course = AppState.runtime.course;
     const winner = ranking.find((r) => r.place === 1).horse;
 
     el.resultWinner.innerHTML = `
@@ -485,6 +549,9 @@ const UI = (() => {
           <div class="podium-medal">${medal[r.place]}</div>
           <div class="podium-number" style="--jersey:${r.horse.color}">${r.horse.number}</div>
           <div class="podium-name">${r.horse.name}</div>
+          <div class="podium-style">脚質：${r.horse.runningStyle.label}</div>
+          <div class="podium-aptitude">${course.surfaceLabel}適性：${RaceConditions.starString(RaceConditions.getAptitude(r.horse, course))}</div>
+          <div class="podium-comment">${RaceConditions.getCompatibilityComment(r.horse, course)}</div>
         </div>
       `).join('');
 
@@ -494,7 +561,10 @@ const UI = (() => {
         <div class="result-row">
           <span class="result-place">${r.place}位</span>
           <span class="result-number" style="--jersey:${r.horse.color}">${r.horse.number}</span>
-          <span class="result-name">${r.horse.name}</span>
+          <div class="result-info">
+            <span class="result-name">${r.horse.name}</span>
+            <span class="result-meta">脚質：${r.horse.runningStyle.label} ／ ${course.surfaceLabel}適性：${RaceConditions.starString(RaceConditions.getAptitude(r.horse, course))}</span>
+          </div>
         </div>
       `).join('');
 

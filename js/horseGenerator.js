@@ -3,7 +3,10 @@
  * ------------------------------------------------------------
  * 出走馬（8頭）を生成するモジュール。
  * 各馬は 馬番 / 馬名 / Speed / Stamina / Luck（各100点満点）に加えて、
- * 芝・ダートそれぞれのコース適性（1〜5の星評価）を持つ。
+ * 芝・ダート・重馬場それぞれの適性（1〜5の星評価）と、脚質
+ * （逃げ／先行／差し／追込）を持つ。これらは馬固有の特性のため、
+ * ここで生成時に一度だけ割り当てる（「調子」は毎レース変わる一時的な
+ * 状態なので raceConditions.js 側で別途扱う）。
  * ------------------------------------------------------------
  */
 
@@ -49,6 +52,8 @@ const HorseGenerator = (() => {
         luck: randomStat(),
         turfAptitude: randomAptitude(),
         dirtAptitude: randomAptitude(),
+        heavyAptitude: randomAptitude(),
+        runningStyle: RaceConditions.pickRandomRunningStyle(),
         color: JERSEY_COLORS[i % JERSEY_COLORS.length],
       });
     }

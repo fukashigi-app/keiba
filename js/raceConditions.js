@@ -1,20 +1,22 @@
 /**
  * raceConditions.js
  * ------------------------------------------------------------
- * コース（馬場）と天候を決めるモジュール。
- * 毎レース開始時にランダムで1つずつ選ばれ、レース結果の
- * 補正（コース適性・天候によるわずかな有利不利）に使われる。
+ * コース（馬場）・天候・脚質・馬場適性まわりのデータと計算ロジック。
+ * 毎レース開始時にコースと天候がランダムで選ばれ、レース結果の
+ * 補正（コース適性・脚質展開・天候によるわずかな有利不利）に使われる。
  * ------------------------------------------------------------
  */
 
 const RaceConditions = (() => {
   // surface: 'turf'（芝） or 'dirt'（ダート）
+  // condition: 'good'（良） / 'yielding'（稍重） / 'heavy'（重）
   const COURSE_TYPES = [
-    { id: 'turf_good', label: '芝（良）', surface: 'turf' },
-    { id: 'turf_yielding', label: '芝（稍重）', surface: 'turf' },
-    { id: 'turf_heavy', label: '芝（重）', surface: 'turf' },
-    { id: 'dirt_good', label: 'ダート（良）', surface: 'dirt' },
-    { id: 'dirt_heavy', label: 'ダート（重）', surface: 'dirt' },
+    { id: 'turf_good', label: '芝（良）', surface: 'turf', surfaceLabel: '芝', condition: 'good', conditionLabel: '良' },
+    { id: 'turf_yielding', label: '芝（稍重）', surface: 'turf', surfaceLabel: '芝', condition: 'yielding', conditionLabel: '稍重' },
+    { id: 'turf_heavy', label: '芝（重）', surface: 'turf', surfaceLabel: '芝', condition: 'heavy', conditionLabel: '重' },
+    { id: 'dirt_good', label: 'ダート（良）', surface: 'dirt', surfaceLabel: 'ダート', condition: 'good', conditionLabel: '良' },
+    { id: 'dirt_yielding', label: 'ダート（稍重）', surface: 'dirt', surfaceLabel: 'ダート', condition: 'yielding', conditionLabel: '稍重' },
+    { id: 'dirt_heavy', label: 'ダート（重）', surface: 'dirt', surfaceLabel: 'ダート', condition: 'heavy', conditionLabel: '重' },
   ];
 
   const WEATHER_TYPES = [
@@ -35,12 +37,24 @@ const RaceConditions = (() => {
     { id: 'wildcard', label: '大穴気配', abilityMultiplier: 0.85, wildcard: true, weight: 10 },
   ];
 
+  // 脚質（レーススタイル）。各馬に生成時から固定で割り当てる特性。
+  const RUNNING_STYLES = [
+    { id: 'nige', label: '逃げ' },
+    { id: 'senko', label: '先行' },
+    { id: 'sashi', label: '差し' },
+    { id: 'oikomi', label: '追込' },
+  ];
+
   function pickRandomCourse() {
     return COURSE_TYPES[Math.floor(Math.random() * COURSE_TYPES.length)];
   }
 
   function pickRandomWeather() {
     return WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+  }
+
+  function pickRandomRunningStyle() {
+    return RUNNING_STYLES[Math.floor(Math.random() * RUNNING_STYLES.length)];
   }
 
   /**
@@ -73,6 +87,37 @@ const RaceConditions = (() => {
   }
 
   /**
+   * コース適性を 0〜1 のスコアに変換する。馬場状態が悪くなるほど、
+   * 表面適性（芝／ダート）に重馬場適性を混ぜる比率を上げる。
+   */
+  function getCourseAptitudeScore(horse, course) {
+    const surfaceScore = getAptitude(horse, course) / 5;
+    const heavyScore = horse.heavyAptitude / 5;
+    const heavyBlend = { good: 0, yielding: 0.2, heavy: 0.4 }[course.condition] || 0;
+    return surfaceScore * (1 - heavyBlend) + heavyScore * heavyBlend;
+  }
+
+  /**
+   * 馬紹介画面などに表示する「今回のコースとの相性コメント」を作る。
+   */
+  function getCompatibilityComment(horse, course) {
+    const surfaceStars = getAptitude(horse, course);
+    const heavyStars = horse.heavyAptitude;
+    const surfaceWord = course.surfaceLabel;
+
+    if (course.condition === 'heavy' && heavyStars >= 4) {
+      return `馬場が重くなるほど粘り強いタイプ。今回の重馬場は望むところ。`;
+    }
+    if (surfaceStars >= 4) {
+      return `今回の${surfaceWord}コースは得意条件。期待できる。`;
+    }
+    if (surfaceStars <= 2) {
+      return `今回の条件はやや苦手。展開次第。`;
+    }
+    return `${surfaceWord}適性は標準的。展開に左右されそう。`;
+  }
+
+  /**
    * 星評価を "★★★☆☆" のような文字列に変換する。
    */
   function starString(value, max = 5) {
@@ -83,11 +128,15 @@ const RaceConditions = (() => {
     COURSE_TYPES,
     WEATHER_TYPES,
     CONDITION_TIERS,
+    RUNNING_STYLES,
     pickRandomCourse,
     pickRandomWeather,
     pickRandomCondition,
+    pickRandomRunningStyle,
     getAptitude,
+    getCourseAptitudeScore,
     getFavoredSurfaceLabel,
+    getCompatibilityComment,
     starString,
   };
 })();

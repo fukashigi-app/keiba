@@ -9,6 +9,12 @@
   --color-sky-bottom: #cdf1ff;
   --color-grass: #6fcf5b;
   --color-grass-dark: #5bbf47;
+  --color-grass-heavy: #4a9e3d;
+  --color-grass-heavy-dark: #3d8531;
+  --color-dirt: #dcb877;
+  --color-dirt-dark: #c9a563;
+  --color-dirt-heavy: #a9834f;
+  --color-dirt-heavy-dark: #8f6d3f;
   --color-white: #ffffff;
   --color-ink: #2b3040;
   --color-muted: #6b7280;
@@ -327,6 +333,27 @@ html, body {
 .condition-poor      { background: #eef3fb; color: #5b7aa0; }
 .condition-wildcard  { background: #f6e8ff; color: #9333ea; }
 
+.style-pill {
+  font-size: 0.62rem;
+  font-weight: bold;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.style-nige   { background: #ffe4e6; color: #e11d48; }
+.style-senko  { background: #e0f2fe; color: #0284c7; }
+.style-sashi  { background: #dcfce7; color: #16a34a; }
+.style-oikomi { background: #fef3c7; color: #b45309; }
+
+.compat-comment {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 2px dashed #eef1f8;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: var(--color-muted);
+}
+
 .aptitude-row {
   display: flex;
   justify-content: space-between;
@@ -515,6 +542,25 @@ html, body {
   background: linear-gradient(90deg, var(--color-accent-yellow), var(--color-accent-red));
 }
 
+.race-course-info {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 1300px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  justify-content: center;
+  background: #fff;
+  border-radius: 20px;
+  padding: 4px 16px;
+  margin-bottom: 4px;
+  font-size: clamp(0.65rem, 2vw, 0.85rem);
+  font-weight: bold;
+  color: var(--color-ink);
+  box-shadow: var(--shadow-soft);
+}
+.race-course-info b { color: var(--color-accent-red); }
+
 .commentary-ticker {
   flex: 0 0 auto;
   width: 100%;
@@ -644,6 +690,51 @@ html, body {
   padding: 2px 0;
   box-shadow: var(--shadow-soft), inset 0 0 0 3px var(--color-accent-green);
   overflow: hidden;
+}
+
+/* --- 芝／ダート／馬場状態の見た目差 --- */
+.race-track.surface-dirt {
+  background: repeating-linear-gradient(0deg, var(--color-dirt), var(--color-dirt) 2px, var(--color-dirt-dark) 2px, var(--color-dirt-dark) 42px);
+  box-shadow: var(--shadow-soft), inset 0 0 0 3px var(--color-dirt-dark);
+}
+.race-track.surface-turf.condition-heavy {
+  background: repeating-linear-gradient(0deg, var(--color-grass-heavy), var(--color-grass-heavy) 2px, var(--color-grass-heavy-dark) 2px, var(--color-grass-heavy-dark) 42px);
+}
+.race-track.surface-dirt.condition-heavy {
+  background: repeating-linear-gradient(0deg, var(--color-dirt-heavy), var(--color-dirt-heavy) 2px, var(--color-dirt-heavy-dark) 2px, var(--color-dirt-heavy-dark) 42px);
+}
+.race-track.condition-yielding { filter: saturate(0.85) brightness(0.96); }
+.race-track.condition-heavy { filter: saturate(0.8) brightness(0.9); }
+
+/* 重馬場の水たまり演出（固定パターンの装飾） */
+.race-track.condition-heavy::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 44px 14px at 14% 18%, rgba(120,170,255,0.4), transparent 70%),
+    radial-gradient(ellipse 54px 16px at 72% 40%, rgba(120,170,255,0.35), transparent 70%),
+    radial-gradient(ellipse 38px 12px at 38% 66%, rgba(120,170,255,0.35), transparent 70%),
+    radial-gradient(ellipse 48px 14px at 88% 82%, rgba(120,170,255,0.35), transparent 70%),
+    radial-gradient(ellipse 40px 13px at 20% 92%, rgba(120,170,255,0.3), transparent 70%);
+}
+
+/* 雨エフェクト（track-wrap全体に重ねる） */
+.race-rain {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: 30px;
+  overflow: hidden;
+  background: repeating-linear-gradient(115deg, rgba(255,255,255,0.55) 0 2px, transparent 2px 16px);
+  opacity: 0.55;
+  animation: rainFall 0.5s linear infinite;
+}
+@keyframes rainFall {
+  from { background-position: 0 0; }
+  to { background-position: -24px 46px; }
 }
 
 .lane {
@@ -793,6 +884,76 @@ html, body {
 .leg-back-2  { left: 32%; }
 .leg-front-1 { left: 62%; }
 .leg-front-2 { left: 70%; }
+
+/* かわいい表情（目・ほっぺ） */
+.horse-eye {
+  position: absolute;
+  left: 79%;
+  top: -22%;
+  width: 6%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #2b2b2b;
+  z-index: 2;
+}
+.horse-cheek {
+  position: absolute;
+  left: 71%;
+  top: -10%;
+  width: 8%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #ff9fb3;
+  opacity: 0.65;
+}
+
+/* 差し替え可能な馬イラスト（assets/images/horseN.png）。
+   画像が読み込めた場合のみ表示し、CSSシルエットは非表示にする。
+   画像が無い／読み込みエラーの場合はCSSシルエットのまま表示される。 */
+.horse-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: none;
+  pointer-events: none;
+}
+.horse.has-image .horse-image { display: block; }
+.horse.has-image .horse-body,
+.horse.has-image .horse-neck-head,
+.horse.has-image .horse-mane,
+.horse.has-image .horse-ear,
+.horse.has-image .horse-tail,
+.horse.has-image .horse-leg,
+.horse.has-image .horse-eye,
+.horse.has-image .horse-cheek {
+  display: none;
+}
+
+/* ダートコースの砂ぼこりエフェクト（.horse.dust-active のみ表示） */
+.dust-puff {
+  position: absolute;
+  left: -4%;
+  bottom: 6%;
+  width: 12%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--color-dirt-dark);
+  opacity: 0;
+  pointer-events: none;
+}
+.horse.running.dust-active .dust-puff {
+  animation: dustPuff 0.7s ease-out infinite;
+}
+.horse.running.dust-active .dust-puff.dust-puff-2 {
+  animation-delay: 0.25s;
+}
+@keyframes dustPuff {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  40% { opacity: 0.55; }
+  100% { opacity: 0; transform: translate(-90%, 35%) scale(1.4); }
+}
 
 /* 走行中のギャロップアニメーション（脚と尻尾） */
 .horse.running .leg-front-1 { animation: gallopA 0.4s linear infinite; }
@@ -996,7 +1157,19 @@ html, body {
   margin: 6px 0;
 }
 .podium-name { color: var(--color-board-led); font-size: 0.9rem; font-weight: bold; }
-.place-1 { order: 2; transform: scale(1.15); }
+.podium-style, .podium-aptitude {
+  font-size: 0.62rem;
+  color: #b8c2e0;
+  margin-top: 3px;
+}
+.podium-comment {
+  font-size: 0.58rem;
+  color: #8fa0cc;
+  margin-top: 5px;
+  line-height: 1.35;
+  max-width: 34vw;
+}
+.place-1 { order: 2; transform: scale(1.1); }
 .place-2 { order: 1; }
 .place-3 { order: 3; }
 
@@ -1028,7 +1201,19 @@ html, body {
   text-align: center;
   font-size: 0.8rem;
 }
+.result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
 .result-name { color: #fff; }
+.result-meta {
+  font-size: 0.68rem;
+  color: #9fb0d9;
+}
 
 /* ============================================================
    遊び方モーダル
@@ -1153,6 +1338,17 @@ body.race-in-progress .admin-panel {
 }
 .admin-toggle-row { justify-content: flex-start; }
 .admin-section input[type="range"] { flex: 1; }
+
+.admin-audio-status {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+  white-space: pre-line;
+}
+.admin-audio-status.status-warn {
+  color: #b9700a;
+}
 
 /* ============================================================
    レスポンシブ調整

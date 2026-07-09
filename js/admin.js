@@ -31,6 +31,11 @@ const Admin = (() => {
 
       volume: document.getElementById('admin-volume'),
       speechRate: document.getElementById('admin-speech-rate'),
+
+      testBgmBtn: document.getElementById('admin-test-bgm'),
+      testSeBtn: document.getElementById('admin-test-se'),
+      testVoiceBtn: document.getElementById('admin-test-voice'),
+      audioStatus: document.getElementById('admin-audio-status'),
     };
 
     applySettingsToInputs();
@@ -94,6 +99,57 @@ const Admin = (() => {
       AppState.settings.speechRate = value;
       Commentary.setRate(value);
     });
+
+    el.testBgmBtn.addEventListener('click', () => {
+      AudioManager.unlock();
+      AudioManager.testBgm();
+      window.setTimeout(showAudioDiagnostics, 400);
+    });
+    el.testSeBtn.addEventListener('click', () => {
+      AudioManager.unlock();
+      AudioManager.testSe();
+      window.setTimeout(showAudioDiagnostics, 400);
+    });
+    el.testVoiceBtn.addEventListener('click', () => {
+      Commentary.unlock();
+      Commentary.speak('実況テストです。聞こえていますか？');
+      window.setTimeout(showAudioDiagnostics, 400);
+    });
+  }
+
+  /**
+   * 「音が出ない」場合の原因候補を管理画面に表示する。
+   * AudioManager / Commentary の現在の状態から機械的に判定する。
+   */
+  function showAudioDiagnostics() {
+    const diag = AudioManager.getDiagnostics();
+    const reasons = [];
+
+    if (!diag.unlocked) {
+      reasons.push('音声ONボタンを押してください');
+    }
+    if (diag.lastPlayError === 'NotAllowedError') {
+      reasons.push('ブラウザの自動再生制限により停止中です');
+    }
+    if (!Commentary.isSupported()) {
+      reasons.push('この端末・ブラウザは実況の読み上げ（SpeechSynthesis）に対応していません');
+    }
+    const missingFiles = Object.entries(diag.fileStatus)
+      .filter(([, status]) => status === 'missing')
+      .map(([key]) => key);
+    if (missingFiles.length > 0) {
+      reasons.push(`音声ファイルが見つかりません（${missingFiles.join(', ')}）`);
+    }
+    if (diag.volume <= 0) {
+      reasons.push('音量が0に設定されています');
+    }
+    if (!diag.bgmEnabled && !diag.seEnabled) {
+      reasons.push('BGM・効果音がOFFになっています');
+    }
+    reasons.push('端末本体の音量もあわせてご確認ください');
+
+    el.audioStatus.textContent = reasons.join('\n');
+    el.audioStatus.classList.toggle('status-warn', reasons.length > 1);
   }
 
   return { init };
