@@ -124,6 +124,35 @@ const RaceConditions = (() => {
     return '★'.repeat(value) + '☆'.repeat(Math.max(0, max - value));
   }
 
+  // 脚質ごとの「勝因コメント」（1着時）と「惜敗コメント」（2着以下）。
+  const WIN_FACTOR_BY_STYLE = {
+    nige: '序盤から一気に飛び出し、そのまま逃げ切りました。',
+    senko: '好位から脚を落とさず、最後まで押し切りました。',
+    sashi: '最後の直線で鋭く伸び、差し切りました。',
+    oikomi: '後方から一気の追い込みが決まりました。',
+  };
+  const LOSE_FACTOR_BY_STYLE = {
+    nige: '粘りましたが、最後は差し切られてしまいました。',
+    senko: '好位から食らいつきましたが、あと一歩届きませんでした。',
+    sashi: '仕掛けがわずかに遅れ、届きませんでした。',
+    oikomi: '追い込みましたが、差を詰めきれませんでした。',
+  };
+
+  /**
+   * 結果画面に表示する「勝因コメント」（1着）／「惜敗コメント」（2着以下）を作る。
+   * 重馬場が苦手な馬が苦戦した場合は、そちらを優先したコメントにする。
+   */
+  function getResultComment(horse, place, course) {
+    const styleId = horse.runningStyle ? horse.runningStyle.id : 'senko';
+    if (course.condition === 'heavy' && horse.heavyAptitude <= 2 && place >= 4) {
+      return '重い馬場に脚を取られ、本来の走りができませんでした。';
+    }
+    if (place === 1) {
+      return WIN_FACTOR_BY_STYLE[styleId] || WIN_FACTOR_BY_STYLE.senko;
+    }
+    return LOSE_FACTOR_BY_STYLE[styleId] || LOSE_FACTOR_BY_STYLE.senko;
+  }
+
   return {
     COURSE_TYPES,
     WEATHER_TYPES,
@@ -137,6 +166,7 @@ const RaceConditions = (() => {
     getCourseAptitudeScore,
     getFavoredSurfaceLabel,
     getCompatibilityComment,
+    getResultComment,
     starString,
   };
 })();

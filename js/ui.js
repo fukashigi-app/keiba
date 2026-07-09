@@ -11,9 +11,12 @@
  */
 
 const UI = (() => {
-  // 馬番ごとの実際の描画幅(px)。馬のサイズは画面幅に応じてCSSで
-  // 自動的に伸縮するため、位置計算にはこの実測値を使う。
-  const horseWidths = {};
+  // 楕円トラックのジオメトリ（トラック実測サイズから算出）と、
+  // 馬番ごとの内外レーンオフセット（重ならないよう固定で割り当てる）。
+  let trackGeo = null;
+  let wrapW = 0;
+  let wrapH = 0;
+  const laneOffsetByNumber = {};
 
   // DOM要素はinit()内でまとめて取得する
   let el = {};
@@ -39,16 +42,21 @@ const UI = (() => {
       lineupRaceInfo: document.getElementById('lineup-race-info'),
       btnSkipLineup: document.getElementById('btn-skip-lineup'),
 
+      votingHeading: document.getElementById('voting-heading'),
       votingTimer: document.getElementById('voting-timer'),
       votingGrid: document.getElementById('voting-grid'),
       votingRaceInfo: document.getElementById('voting-race-info'),
+      votingTicker: document.getElementById('voting-ticker'),
 
       countdownNumber: document.getElementById('countdown-number'),
 
       raceTrack: document.getElementById('race-track'),
+      ovalHorses: document.getElementById('oval-horses'),
+      ovalFinishLine: document.getElementById('oval-finish-line'),
       raceTrackWrap: document.querySelector('.race-track-wrap'),
       raceRanking: document.getElementById('race-ranking'),
       raceCourseInfo: document.getElementById('race-course-info'),
+      audioMissingIndicator: document.getElementById('audio-missing-indicator'),
       raceRain: document.getElementById('race-rain'),
       commentaryTicker: document.getElementById('commentary-ticker'),
       raceDistanceFill: document.getElementById('race-distance-fill'),
@@ -122,7 +130,7 @@ const UI = (() => {
     renderRaceInfo(el.lineupRaceInfo);
     renderHorseGrid(el.lineupGrid, AppState.runtime.horses, AppState.runtime.course);
     showScreen('lineup');
-    AudioManager.playBgm('pre');
+    AudioManager.playBgm('vote');
     startLineupCountdown();
   }
 
@@ -173,6 +181,10 @@ const UI = (() => {
       const style = horse.runningStyle || RaceConditions.RUNNING_STYLES[1];
       const compatComment = course ? RaceConditions.getCompatibilityComment(horse, course) : '';
       card.innerHTML = `
+        <div class="horse-card-illust">
+          <span class="horse-card-emoji">🐴</span>
+          <img class="horse-card-img" alt="">
+        </div>
         <div class="horse-card-number">${horse.number}</div>
         <div class="horse-card-name">${horse.name}</div>
         <div class="stat-row"><span>Speed</span><div class="stat-bar"><div class="stat-fill" style="width:${horse.speed}%"></div></div><span class="stat-val">${horse.speed}</span></div>
@@ -191,6 +203,11 @@ const UI = (() => {
         ${compatComment ? `<div class="compat-comment">${compatComment}</div>` : ''}
       `;
       gridEl.appendChild(card);
+
+      const img = card.querySelector('.horse-card-img');
+      img.addEventListener('load', () => card.classList.add('has-image'));
+      img.addEventListener('error', () => img.removeAttribute('src'));
+      img.src = `assets/images/horse${horse.number}.png`;
     });
   }
 
@@ -216,19 +233,51 @@ const UI = (() => {
     renderRaceInfo(el.votingRaceInfo);
     renderHorseGrid(el.votingGrid, AppState.runtime.horses, AppState.runtime.course);
     showScreen('voting');
+    el.votingHeading.textContent = '投票受付中';
+    el.votingTicker.classList.add('hidden');
 
     let remaining = AppState.settings.votingDuration;
     el.votingTimer.textContent = remaining;
+
+    // 残り10秒／5秒のアナウンスは、それぞれ一度だけ発生させる。
+    let announced10 = false;
+    let announced5 = false;
+
     const id = setInterval(() => {
       remaining -= 1;
       el.votingTimer.textContent = Math.max(0, remaining);
+
+      if (remaining === 10 && !announced10) {
+        announced10 = true;
+        announceVotingEnd('まもなく投票終了です', 'まもなく投票終了です。投票券の記入を完了してください。');
+      }
+      if (remaining === 5 && !announced5) {
+        announced5 = true;
+        announceVotingEnd('投票終了です', '投票終了です。');
+      }
+
       if (remaining <= 0) {
         clearInterval(id);
+        el.votingHeading.textContent = '投票終了！';
+        AudioManager.fadeOutBgm(600);
         // 投票終了 → 自動的にカウントダウンへ進み、そのままレースを開始する
-        runCountdownThenRace();
+        const toCountdown = setTimeout(runCountdownThenRace, 600);
+        AppState.registerTimer(toCountdown);
       }
     }, 1000);
     AppState.registerTimer(id);
+  }
+
+  /**
+   * 投票終了間近のアナウンス。テロップは常に表示し、音声は「音声ON」が
+   * 押されている場合のみ読み上げる（未押下時は無音のまま進行する）。
+   */
+  function announceVotingEnd(tickerText, speechText) {
+    el.votingTicker.textContent = tickerText;
+    el.votingTicker.classList.remove('hidden');
+    if (AudioManager.isUnlocked()) {
+      Commentary.speak(speechText);
+    }
   }
 
   /**
@@ -274,38 +323,65 @@ const UI = (() => {
     step();
   }
 
+  /**
+   * 楕円トラックの内外レーンオフセットを馬の頭数ぶん計算する。
+   * offsetはRaceTrackGeometryの半径に加算する値（マイナス＝内側寄り）。
+   * 常に0より内側に収めることで、トラック外枠(Rc)からはみ出さないようにする。
+   */
+  function computeLaneOffsets(count, Rc) {
+    const outerMargin = Math.max(10, Rc * 0.06); // 一番外側の馬でも外枠に触れない余白
+    const innerMargin = Math.max(24, Rc * 0.32); // 一番内側の馬でも内馬場に重ならない余白
+    const offsets = [];
+    for (let i = 0; i < count; i++) {
+      const t = count === 1 ? 0.5 : i / (count - 1);
+      offsets.push(-innerMargin + (innerMargin - outerMargin) * t);
+    }
+    return offsets;
+  }
+
   function renderTrack(horses, course) {
     const isDirt = course && course.surface === 'dirt';
     el.raceTrack.className = `race-track surface-${course ? course.surface : 'turf'} condition-${course ? course.condition : 'good'}`;
-    el.raceTrack.innerHTML = '';
+
+    // トラックは表示済みの状態で実測する（display:noneのままだと0になるため）。
+    wrapW = el.raceTrackWrap.clientWidth;
+    wrapH = el.raceTrackWrap.clientHeight;
+    trackGeo = RaceTrackGeometry.computeGeometry(wrapW, wrapH);
+
+    const horseHeightPx = Math.max(16, Math.min(46, trackGeo.Rc * 0.3));
+    el.raceTrack.style.setProperty('--horse-h', `${horseHeightPx}px`);
+    el.raceTrack.style.setProperty('--infield-inset', `${trackGeo.Rc * 0.62}px`);
+
+    const offsets = computeLaneOffsets(horses.length, trackGeo.Rc);
+    horses.forEach((horse, i) => {
+      laneOffsetByNumber[horse.number] = offsets[i];
+    });
+
+    el.ovalHorses.innerHTML = '';
     horses.forEach((horse) => {
-      const lane = document.createElement('div');
-      lane.className = 'lane';
-      lane.innerHTML = `
-        <div class="lane-number">${horse.number}</div>
-        <div class="lane-track">
-          <div class="start-line"></div>
-          <div class="finish-line"></div>
-          <div class="horse${isDirt ? ' dust-active' : ''}" id="horse-${horse.number}" style="--jersey:${horse.color}">
-            <div class="dust-puff dust-puff-1"></div>
-            <div class="dust-puff dust-puff-2"></div>
-            <div class="horse-tail"></div>
-            <div class="horse-body"></div>
-            <div class="horse-leg leg-front-1"></div>
-            <div class="horse-leg leg-front-2"></div>
-            <div class="horse-leg leg-back-1"></div>
-            <div class="horse-leg leg-back-2"></div>
-            <div class="horse-mane"></div>
-            <div class="horse-neck-head"></div>
-            <div class="horse-ear"></div>
-            <div class="horse-eye"></div>
-            <div class="horse-cheek"></div>
-            <img class="horse-image" alt="">
-            <div class="horse-badge">${horse.number}</div>
-          </div>
+      const slot = document.createElement('div');
+      slot.className = 'horse-slot';
+      slot.id = `horse-slot-${horse.number}`;
+      slot.innerHTML = `
+        <div class="horse${isDirt ? ' dust-active' : ''}" id="horse-${horse.number}" style="--jersey:${horse.color}">
+          <div class="dust-puff dust-puff-1"></div>
+          <div class="dust-puff dust-puff-2"></div>
+          <div class="horse-tail"></div>
+          <div class="horse-body"></div>
+          <div class="horse-leg leg-front-1"></div>
+          <div class="horse-leg leg-front-2"></div>
+          <div class="horse-leg leg-back-1"></div>
+          <div class="horse-leg leg-back-2"></div>
+          <div class="horse-mane"></div>
+          <div class="horse-neck-head"></div>
+          <div class="horse-ear"></div>
+          <div class="horse-eye"></div>
+          <div class="horse-cheek"></div>
+          <img class="horse-image" alt="">
         </div>
+        <div class="horse-badge">${horse.number}</div>
       `;
-      el.raceTrack.appendChild(lane);
+      el.ovalHorses.appendChild(slot);
     });
 
     // 差し替え可能な馬イラスト（assets/images/horseN.png）。読み込めた
@@ -322,23 +398,43 @@ const UI = (() => {
       img.src = `assets/images/horse${horse.number}.png`;
     });
 
+    // ゴール板：スタート＝ゴール地点に、進行方向と垂直な板を1本置く。
+    // レーン帯の中央（内外オフセットの平均）に置くことで、外枠の外に
+    // はみ出して見切れてしまわないようにする。
+    const midOffset = offsets.reduce((sum, o) => sum + o, 0) / offsets.length;
+    const finishPoint = RaceTrackGeometry.getPosition(0, trackGeo, midOffset);
+    el.ovalFinishLine.style.left = `${wrapW / 2 + finishPoint.x}px`;
+    el.ovalFinishLine.style.top = `${wrapH / 2 + finishPoint.y}px`;
+    el.ovalFinishLine.style.height = `${innerToOuterSpan(trackGeo.Rc)}px`;
+    el.ovalFinishLine.style.transform = `translate(-50%, -50%) rotate(${finishPoint.angleDeg + 90}deg)`;
+
     // 雨の日は水しぶきで足元が見えにくくなるため、track-wrap全体に
     // 雨エフェクトを重ねる。
     el.raceRain.classList.toggle('hidden', !(AppState.runtime.weather && AppState.runtime.weather.id === 'rainy'));
+  }
 
-    // 馬のサイズは画面幅に応じてCSSで自動的に伸縮するため、
-    // 描画直後の実測幅を位置計算に使う（レーン単位の右端クランプ用）。
-    horses.forEach((horse) => {
-      const horseEl = document.getElementById(`horse-${horse.number}`);
-      horseWidths[horse.number] = horseEl ? horseEl.offsetWidth : 0;
-    });
+  function innerToOuterSpan(Rc) {
+    const outerMargin = Math.max(10, Rc * 0.06);
+    const innerMargin = Math.max(24, Rc * 0.32);
+    return (Rc - outerMargin) - (Rc - innerMargin) + 30;
   }
 
   function setHorsePosition(number, percent) {
+    const slot = document.getElementById(`horse-slot-${number}`);
     const horseEl = document.getElementById(`horse-${number}`);
-    if (!horseEl) return;
-    const width = horseWidths[number] || 0;
-    horseEl.style.left = `calc((100% - ${width}px) * ${percent / 100})`;
+    if (!slot || !horseEl || !trackGeo) return;
+    const offset = laneOffsetByNumber[number] || 0;
+    const pos = RaceTrackGeometry.getPosition(percent / 100, trackGeo, offset);
+    slot.style.left = `${wrapW / 2 + pos.x}px`;
+    slot.style.top = `${wrapH / 2 + pos.y}px`;
+
+    // サイドビューの馬シルエットを進行方向に合わせる：上下逆さまにならないよう
+    // 左右反転(scaleX)で向きを変え、コーナーでは軽いバンク角(rotate)だけ加える。
+    const angleRad = (pos.angleDeg * Math.PI) / 180;
+    const facingLeft = Math.cos(angleRad) < 0;
+    const flip = facingLeft ? -1 : 1;
+    const bank = Math.sin(angleRad) * (facingLeft ? -16 : 16);
+    horseEl.style.transform = `scaleX(${flip}) rotate(${bank}deg)`;
   }
 
   /**
@@ -360,6 +456,17 @@ const UI = (() => {
     `;
   }
 
+  /**
+   * 音源ファイルが1つも読み込めていない場合に、レース画面に
+   * 小さな「音源未設定」インジケーターを表示する（エラーにはしない）。
+   */
+  function updateAudioMissingIndicator() {
+    const diag = AudioManager.getDiagnostics();
+    const relevantKeys = ['bgm:race', 'se:start', 'se:goal'];
+    const allMissing = relevantKeys.every((key) => diag.fileStatus[key] === 'missing');
+    el.audioMissingIndicator.classList.toggle('hidden', !allMissing);
+  }
+
   function runRace() {
     const horses = AppState.runtime.horses;
     const duration = AppState.settings.raceDuration;
@@ -378,6 +485,7 @@ const UI = (() => {
     el.raceTrackWrap.classList.remove('final-stretch');
     AudioManager.playBgm('race');
     AudioManager.playSe('running');
+    updateAudioMissingIndicator();
 
     const startTime = performance.now();
     let nextCommentaryAt = 1200; // ms
@@ -427,10 +535,11 @@ const UI = (() => {
         AudioManager.playSe('running');
       }
 
-      // 最後の直線：トラックをわずかにズーム＆点滅させて盛り上げる
+      // 最後の直線：トラックをわずかにズーム＆点滅させ、BGMもわずかに盛り上げる
       if (progress > 0.85 && !finalStretchStarted) {
         finalStretchStarted = true;
         el.raceTrackWrap.classList.add('final-stretch');
+        AudioManager.raiseBgmForFinalStretch();
       }
 
       if (progress < 1) {
@@ -494,10 +603,16 @@ const UI = (() => {
    */
   function finishRace(result) {
     document.querySelectorAll('.horse').forEach((h) => h.classList.remove('running'));
+    AudioManager.fadeOutBgm(400);
     AudioManager.playSe('goal');
     AudioManager.playSe('cheer');
     const finishText = Commentary.speakCategory('finishLine');
     showTicker(finishText);
+
+    // 上位2頭の着差が僅かな場合だけ「PHOTO FINISH」演出を挟む。
+    const top2 = result.ranking.slice(0, 2);
+    const closeRace = top2.length === 2
+      && (top2[0].rawDistance - top2[1].rawDistance) / top2[0].rawDistance < 0.02;
 
     el.photoFinishOverlay.classList.remove('hidden');
     el.pfText.textContent = 'GOAL!';
@@ -507,18 +622,20 @@ const UI = (() => {
     el.pfFlash.classList.add('flash');
     el.pfText.classList.add('show');
 
-    const toPhotoFinish = setTimeout(() => {
-      el.pfText.classList.remove('show');
-      void el.pfText.offsetWidth;
-      el.pfText.textContent = 'PHOTO FINISH';
-      el.pfText.classList.add('show');
-    }, 600);
-    AppState.registerTimer(toPhotoFinish);
+    if (closeRace) {
+      const toPhotoFinish = setTimeout(() => {
+        el.pfText.classList.remove('show');
+        void el.pfText.offsetWidth;
+        el.pfText.textContent = 'PHOTO FINISH';
+        el.pfText.classList.add('show');
+      }, 600);
+      AppState.registerTimer(toPhotoFinish);
+    }
 
     const toResult = setTimeout(() => {
       el.photoFinishOverlay.classList.add('hidden');
       showResult(result);
-    }, 1600);
+    }, closeRace ? 1600 : 1000);
     AppState.registerTimer(toResult);
   }
 
@@ -549,9 +666,10 @@ const UI = (() => {
           <div class="podium-medal">${medal[r.place]}</div>
           <div class="podium-number" style="--jersey:${r.horse.color}">${r.horse.number}</div>
           <div class="podium-name">${r.horse.name}</div>
-          <div class="podium-style">脚質：${r.horse.runningStyle.label}</div>
+          <div class="podium-style">脚質：${r.horse.runningStyle.label} ／ コース：${course.surfaceLabel} ${course.conditionLabel}</div>
           <div class="podium-aptitude">${course.surfaceLabel}適性：${RaceConditions.starString(RaceConditions.getAptitude(r.horse, course))}</div>
           <div class="podium-comment">${RaceConditions.getCompatibilityComment(r.horse, course)}</div>
+          <div class="podium-comment podium-winfactor">勝因：${RaceConditions.getResultComment(r.horse, r.place, course)}</div>
         </div>
       `).join('');
 
@@ -563,7 +681,8 @@ const UI = (() => {
           <span class="result-number" style="--jersey:${r.horse.color}">${r.horse.number}</span>
           <div class="result-info">
             <span class="result-name">${r.horse.name}</span>
-            <span class="result-meta">脚質：${r.horse.runningStyle.label} ／ ${course.surfaceLabel}適性：${RaceConditions.starString(RaceConditions.getAptitude(r.horse, course))}</span>
+            <span class="result-meta">脚質：${r.horse.runningStyle.label} ／ コース：${course.surfaceLabel} ${course.conditionLabel} ／ ${course.surfaceLabel}適性：${RaceConditions.starString(RaceConditions.getAptitude(r.horse, course))}</span>
+            <span class="result-meta result-winfactor">${RaceConditions.getResultComment(r.horse, r.place, course)}</span>
           </div>
         </div>
       `).join('');

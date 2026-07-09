@@ -38,10 +38,11 @@
   <!-- ============ 投票受付画面 ============ -->
   <section id="screen-voting" class="screen screen-voting">
     <div class="voting-header">
-      <h2 class="voting-heading">投票受付中</h2>
+      <h2 id="voting-heading" class="voting-heading">投票受付中</h2>
       <div id="voting-race-info" class="race-info race-info-compact"></div>
       <div id="voting-timer" class="voting-timer">90</div>
       <p class="voting-sub">紙の投票券をご記入ください</p>
+      <div id="voting-ticker" class="commentary-ticker voting-ticker hidden"></div>
     </div>
     <div id="voting-grid" class="lineup-grid voting-grid"></div>
   </section>
@@ -62,6 +63,7 @@
       </div>
     </div>
     <div id="race-course-info" class="race-course-info"></div>
+    <div id="audio-missing-indicator" class="audio-missing-indicator hidden">🔇 音源未設定</div>
     <div id="commentary-ticker" class="commentary-ticker"></div>
     <div class="race-main">
       <div class="race-track-wrap">
@@ -71,9 +73,11 @@
           <div class="race-cloud race-cloud-2"></div>
         </div>
         <div class="race-grandstand"></div>
-        <div class="race-flag race-flag-start">🚩</div>
-        <div class="race-flag race-flag-goal">🏁</div>
-        <div id="race-track" class="race-track"></div>
+        <div id="race-track" class="race-track">
+          <div class="oval-infield"></div>
+          <div id="oval-finish-line" class="oval-finish-line"></div>
+          <div id="oval-horses" class="oval-horses"></div>
+        </div>
         <div id="race-rain" class="race-rain hidden"></div>
       </div>
       <div id="race-ranking" class="race-ranking"></div>
@@ -151,8 +155,10 @@
   <div class="admin-section">
     <h3>音声デバッグ</h3>
     <div class="admin-actions">
-      <button id="admin-test-bgm" class="btn btn-outline btn-small">BGMテスト</button>
-      <button id="admin-test-se" class="btn btn-outline btn-small">効果音テスト</button>
+      <button id="admin-test-bgm-vote" class="btn btn-outline btn-small">投票前BGMテスト</button>
+      <button id="admin-test-bgm-race" class="btn btn-outline btn-small">レースBGMテスト</button>
+      <button id="admin-test-se-start" class="btn btn-outline btn-small">スタート音テスト</button>
+      <button id="admin-test-se-goal" class="btn btn-outline btn-small">ゴール音テスト</button>
       <button id="admin-test-voice" class="btn btn-outline btn-small">実況テスト</button>
     </div>
     <div id="admin-audio-status" class="admin-audio-status"></div>
@@ -163,6 +169,7 @@
 <script src="js/raceConditions.js"></script>
 <script src="js/horseGenerator.js"></script>
 <script src="js/raceEngine.js"></script>
+<script src="js/raceTrackGeometry.js"></script>
 <script src="js/commentary.js"></script>
 <script src="js/audioManager.js"></script>
 <script src="js/appState.js"></script>

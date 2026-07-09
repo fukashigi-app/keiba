@@ -13,7 +13,7 @@
 
 const AudioManager = (() => {
   const BGM_FILES = {
-    pre: 'assets/audio/bgm-pre.mp3',
+    vote: 'assets/audio/bgm-vote.mp3',
     race: 'assets/audio/bgm-race.mp3',
     result: 'assets/audio/bgm-result.mp3',
   };
@@ -60,6 +60,7 @@ const AudioManager = (() => {
     audio.addEventListener('error', () => {
       audio.dataset.unavailable = 'true';
       fileStatus[statusKey] = 'missing';
+      console.warn(`[AudioManager] 音源が見つかりません: ${src}（無音のまま進行します）`);
     });
     audio.addEventListener('canplaythrough', () => {
       fileStatus[statusKey] = 'ok';
@@ -162,6 +163,48 @@ const AudioManager = (() => {
     currentBgmKey = null;
   }
 
+  // フェード中のBGMを追跡し、フェード完了前に次のBGMが始まっても
+  // 二重にフェードループが走らないようにする。
+  let fadeToken = 0;
+
+  /**
+   * 再生中のBGMを指定時間かけてゆっくりフェードアウトしてから停止する。
+   * 素のHTMLAudioElementにはフェード機能が無いため、
+   * requestAnimationFrameで音量を毎フレーム下げていく。
+   */
+  function fadeOutBgm(durationMs = 600) {
+    const audio = currentBgm;
+    if (!audio) return;
+    const myToken = ++fadeToken;
+    currentBgm = null;
+    currentBgmKey = null;
+    const startVolume = audio.volume;
+    const startTime = performance.now();
+
+    function step(now) {
+      if (myToken !== fadeToken) return;
+      const t = Math.min(1, (now - startTime) / durationMs);
+      audio.volume = startVolume * (1 - t);
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = masterVolume;
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  /**
+   * 最後の直線でBGMをわずかに盛り上げる（音量を一段階上げる）。
+   */
+  function raiseBgmForFinalStretch() {
+    if (currentBgm) {
+      currentBgm.volume = Math.min(1, masterVolume * 1.2);
+    }
+  }
+
   function playSe(key) {
     if (!seEnabled) return;
     const pool = sePools[key];
@@ -204,16 +247,15 @@ const AudioManager = (() => {
     };
   }
 
-  /** 管理画面の「BGMテスト」ボタンから呼ばれる。 */
-  function testBgm() {
+  /** 管理画面の音声デバッグボタンから呼ばれる（キーを指定してテスト再生）。 */
+  function testBgm(key) {
     lastPlayError = null;
-    playBgm('race');
+    playBgm(key || 'race');
   }
 
-  /** 管理画面の「効果音テスト」ボタンから呼ばれる。 */
-  function testSe() {
+  function testSe(key) {
     lastPlayError = null;
-    playSe('start');
+    playSe(key || 'start');
   }
 
   return {
@@ -221,6 +263,8 @@ const AudioManager = (() => {
     unlock,
     playBgm,
     stopBgm,
+    fadeOutBgm,
+    raiseBgmForFinalStretch,
     playSe,
     setBgmEnabled,
     setSeEnabled,

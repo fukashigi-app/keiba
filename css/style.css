@@ -234,13 +234,18 @@ html, body {
   grid-template-columns: repeat(4, minmax(160px, 1fr));
   gap: 14px;
   width: 100%;
-  max-width: 1100px;
+  max-width: 1300px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  max-height: 60vh;
   padding: 4px;
+  align-content: start;
 }
 @media (max-width: 720px) {
   .lineup-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 420px) {
+  .lineup-grid { grid-template-columns: 1fr; }
 }
 
 .horse-card {
@@ -265,6 +270,30 @@ html, body {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.horse-card-illust {
+  position: relative;
+  width: 100%;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  margin-bottom: 6px;
+  background: #f5f7fb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.horse-card-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: none;
+}
+.horse-card.has-image .horse-card-img { display: block; }
+.horse-card.has-image .horse-card-emoji { display: none; }
 
 .horse-card-number {
   display: inline-flex;
@@ -461,8 +490,16 @@ html, body {
 }
 .voting-sub { color: var(--color-muted); margin: 0; font-size: 0.85rem; }
 
+.voting-ticker {
+  margin: 8px auto 0;
+  max-width: 480px;
+  background: var(--color-accent-red);
+}
+
 .voting-grid {
-  max-height: 62vh;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
 }
 
 /* ============================================================
@@ -561,6 +598,16 @@ html, body {
 }
 .race-course-info b { color: var(--color-accent-red); }
 
+.audio-missing-indicator {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 1300px;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  margin-bottom: 2px;
+}
+
 .commentary-ticker {
   flex: 0 0 auto;
   width: 100%;
@@ -657,16 +704,6 @@ html, body {
   pointer-events: none;
 }
 
-.race-flag {
-  position: absolute;
-  top: -26px;
-  font-size: clamp(14px, 2.4vw, 22px);
-  z-index: 3;
-  pointer-events: none;
-}
-.race-flag-start { left: 2%; }
-.race-flag-goal { right: 2%; }
-
 .race-bg-lights {
   position: absolute;
   inset: 0;
@@ -677,19 +714,48 @@ html, body {
   border-radius: 30px;
 }
 
+/* 楕円（スタジアム型）トラック本体。border-radiusに大きな絶対px値を
+   指定すると、ブラウザが自動的に「直線＋半円コーナー×2」の
+   スタジアム型に丸めてくれる（raceTrackGeometry.jsの座標計算と対応）。 */
 .race-track {
   position: relative;
   width: 100%;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
   background: repeating-linear-gradient(0deg, var(--color-grass), var(--color-grass) 2px, var(--color-grass-dark) 2px, var(--color-grass-dark) 42px);
   border: 6px solid #fff;
-  border-radius: 30px;
-  padding: 2px 0;
+  border-radius: 999px;
   box-shadow: var(--shadow-soft), inset 0 0 0 3px var(--color-accent-green);
   overflow: hidden;
+}
+
+/* 内馬場（コースの内側）。トラックと同じスタジアム型を、JSが計算した
+   インセット幅ぶん内側に配置することでリング状のコースを作る。 */
+.oval-infield {
+  position: absolute;
+  inset: var(--infield-inset, 60px);
+  border-radius: 999px;
+  background: linear-gradient(160deg, rgba(255,255,255,0.3), rgba(255,255,255,0.05)), var(--color-grass-dark);
+  box-shadow: inset 0 0 0 4px rgba(255,255,255,0.55);
+}
+.race-track.surface-dirt .oval-infield {
+  background: linear-gradient(160deg, rgba(255,255,255,0.3), rgba(255,255,255,0.05)), var(--color-grass);
+}
+.race-track.condition-heavy .oval-infield { filter: saturate(0.85) brightness(0.92); }
+
+.oval-finish-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 5px;
+  background: repeating-linear-gradient(180deg, #fff 0 6px, #111 6px 12px);
+  box-shadow: 0 0 10px rgba(255,255,255,0.9);
+  z-index: 4;
+}
+
+.oval-horses {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
 }
 
 /* --- 芝／ダート／馬場状態の見た目差 --- */
@@ -737,62 +803,23 @@ html, body {
   to { background-position: -24px 46px; }
 }
 
-.lane {
-  position: relative;
-  display: flex;
-  align-items: center;
-  height: 12.5%;
-  border-bottom: 2px dashed rgba(255,255,255,0.55);
-}
-.lane:last-child { border-bottom: none; }
-
-.lane-number {
-  flex: 0 0 auto;
-  width: 6%;
-  min-width: 18px;
-  color: #fff;
-  font-weight: 900;
-  font-size: clamp(0.6rem, 1.6vw, 0.9rem);
-  text-align: center;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.35);
-}
-
-.lane-track {
-  position: relative;
-  flex: 1;
-  height: 100%;
-}
-
-.start-line {
-  position: absolute;
-  left: 2%;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: repeating-linear-gradient(180deg, #fff 0 5px, var(--color-accent-blue) 5px 10px);
-}
-
-.finish-line {
-  position: absolute;
-  right: 2%;
-  top: 0;
-  bottom: 0;
-  width: 5px;
-  background: repeating-linear-gradient(180deg, #fff 0 6px, #111 6px 12px);
-  box-shadow: 0 0 10px rgba(255,255,255,0.9);
-}
-
 /* --- 馬（CSSシルエット） ---
-   左→右へ走る想定。右側＝頭、左側＝尻尾。
-   高さをレーン(.lane-track)基準の%指定にすることで、画面サイズに
-   合わせて自動的に縮小・拡大される（スマホでも8レーンが収まる）。 */
-.horse {
+   楕円トラック上に直接配置する。.horse-slot がJS計算のleft/top(px)で
+   トラック上の位置を決め、中の.horseがJS計算のrotate/scaleXで進行方向を
+   向く。番号バッジ(.horse-badge)は.horse-slotの直接の子にすることで、
+   馬の向きが変わっても常に正立のまま読みやすく表示される。 */
+.horse-slot {
   position: absolute;
   left: 0;
-  top: 50%;
-  height: 60%;
+  top: 0;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+.horse {
+  position: relative;
+  height: var(--horse-h, 40px);
   aspect-ratio: 2 / 1;
-  transform: translateY(-50%);
   transition: none;
   filter: drop-shadow(0 3px 2px rgba(0,0,0,0.25));
 }
@@ -855,21 +882,24 @@ html, body {
   border-radius: 60% 10% 60% 10%;
   transform-origin: right center;
 }
+/* 馬番バッジは.horse-slotの直接の子（.horseの外）に置くことで、
+   馬の向き(scaleX/rotate)に影響されず常に正立で表示される。 */
 .horse-badge {
   position: absolute;
-  left: 37%;
-  top: 3%;
-  width: 20%;
-  height: 40%;
-  font-size: 62%;
-  line-height: 1.9;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(var(--horse-h, 40px) * 0.55);
+  height: calc(var(--horse-h, 40px) * 0.55);
+  line-height: calc(var(--horse-h, 40px) * 0.55);
+  font-size: calc(var(--horse-h, 40px) * 0.34);
   text-align: center;
   border-radius: 50%;
   background: #fff;
   border: 3px solid var(--jersey, var(--color-accent-blue));
   color: var(--color-ink);
   font-weight: 900;
-  z-index: 2;
+  z-index: 12;
 }
 .horse-leg {
   position: absolute;
@@ -1083,6 +1113,9 @@ html, body {
    ============================================================ */
 .screen-result {
   background: linear-gradient(180deg, #1a2550, #0c1430);
+  justify-content: flex-start;
+  overflow-y: auto;
+  padding-top: max(24px, env(safe-area-inset-top));
 }
 
 .scoreboard {
@@ -1169,6 +1202,10 @@ html, body {
   line-height: 1.35;
   max-width: 34vw;
 }
+.podium-winfactor {
+  color: var(--color-board-led);
+  font-weight: bold;
+}
 .place-1 { order: 2; transform: scale(1.1); }
 .place-2 { order: 1; }
 .place-3 { order: 3; }
@@ -1213,6 +1250,9 @@ html, body {
 .result-meta {
   font-size: 0.68rem;
   color: #9fb0d9;
+}
+.result-winfactor {
+  color: var(--color-board-led);
 }
 
 /* ============================================================
@@ -1354,7 +1394,6 @@ body.race-in-progress .admin-panel {
    レスポンシブ調整
    ============================================================ */
 @media (max-width: 480px) {
-  .lineup-grid { grid-template-columns: 1fr 1fr; max-height: 55vh; }
   .admin-panel { width: calc(100vw - 32px); }
   .result-podium { gap: 10px; }
 }

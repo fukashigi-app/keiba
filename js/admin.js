@@ -32,8 +32,10 @@ const Admin = (() => {
       volume: document.getElementById('admin-volume'),
       speechRate: document.getElementById('admin-speech-rate'),
 
-      testBgmBtn: document.getElementById('admin-test-bgm'),
-      testSeBtn: document.getElementById('admin-test-se'),
+      testBgmVoteBtn: document.getElementById('admin-test-bgm-vote'),
+      testBgmRaceBtn: document.getElementById('admin-test-bgm-race'),
+      testSeStartBtn: document.getElementById('admin-test-se-start'),
+      testSeGoalBtn: document.getElementById('admin-test-se-goal'),
       testVoiceBtn: document.getElementById('admin-test-voice'),
       audioStatus: document.getElementById('admin-audio-status'),
     };
@@ -100,14 +102,24 @@ const Admin = (() => {
       Commentary.setRate(value);
     });
 
-    el.testBgmBtn.addEventListener('click', () => {
+    el.testBgmVoteBtn.addEventListener('click', () => {
       AudioManager.unlock();
-      AudioManager.testBgm();
+      AudioManager.testBgm('vote');
       window.setTimeout(showAudioDiagnostics, 400);
     });
-    el.testSeBtn.addEventListener('click', () => {
+    el.testBgmRaceBtn.addEventListener('click', () => {
       AudioManager.unlock();
-      AudioManager.testSe();
+      AudioManager.testBgm('race');
+      window.setTimeout(showAudioDiagnostics, 400);
+    });
+    el.testSeStartBtn.addEventListener('click', () => {
+      AudioManager.unlock();
+      AudioManager.testSe('start');
+      window.setTimeout(showAudioDiagnostics, 400);
+    });
+    el.testSeGoalBtn.addEventListener('click', () => {
+      AudioManager.unlock();
+      AudioManager.testSe('goal');
       window.setTimeout(showAudioDiagnostics, 400);
     });
     el.testVoiceBtn.addEventListener('click', () => {
