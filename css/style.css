@@ -278,11 +278,16 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(2.2rem, 6vw, 3.4rem);
   margin-bottom: 6px;
   background: #f5f7fb;
   border-radius: 12px;
   overflow: hidden;
+}
+/* カード内の馬シルエットは、トラック上の馬(.horse)と同じCSSを流用しつつ、
+   カードの高さに収まるサイズだけ上書きする。 */
+.horse-card-illust .horse.card-horse {
+  height: 60%;
+  transition: none;
 }
 .horse-card-img {
   position: absolute;
@@ -293,7 +298,7 @@ html, body {
   display: none;
 }
 .horse-card.has-image .horse-card-img { display: block; }
-.horse-card.has-image .horse-card-emoji { display: none; }
+.horse-card.has-image .card-horse { display: none; }
 
 /* 馬番はカード内で最も目立つ要素にする：イラストの左上に大きく重ねて表示。 */
 .horse-card-number {
@@ -691,6 +696,8 @@ html, body {
 .race-cloud-1 { left: 12%; animation: floatCloud 12s ease-in-out infinite; }
 .race-cloud-2 { left: 62%; animation: floatCloud 16s ease-in-out infinite reverse; }
 
+/* 観客席：色帯の上に小さな丸（観客の頭）を重ねて、遠目にも
+   「観客が座っている」と分かるようにする。 */
 .race-grandstand {
   position: absolute;
   left: -2px;
@@ -699,6 +706,7 @@ html, body {
   height: 12px;
   border-radius: 8px;
   background:
+    repeating-radial-gradient(circle at 5px 8px, rgba(255,255,255,0.5) 0 1.5px, transparent 2px 10px),
     repeating-linear-gradient(90deg,
       var(--color-accent-red) 0 10px,
       var(--color-accent-yellow) 10px 20px,
@@ -754,6 +762,31 @@ html, body {
   background: repeating-linear-gradient(180deg, #fff 0 6px, #111 6px 12px);
   box-shadow: 0 0 10px rgba(255,255,255,0.9);
   z-index: 4;
+}
+
+/* ゴール地点の内馬場側に立てる、ひと目で分かる「GOAL」看板。
+   常に正立表示（回転させない）にすることで、コースのどの向きでも
+   読みやすくしてある。 */
+.oval-goal-sign {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  background: #fff;
+  border: 3px solid var(--color-accent-red);
+  border-radius: 6px;
+  color: var(--color-accent-red);
+  font-family: var(--font-round);
+  font-weight: 900;
+  font-size: clamp(0.55rem, 1.4vw, 0.85rem);
+  letter-spacing: 0.05em;
+  box-shadow: var(--shadow-pop);
+  z-index: 4;
+  white-space: nowrap;
 }
 
 .oval-horses {
@@ -839,13 +872,16 @@ html, body {
     drop-shadow(0 -0.8px 0 rgba(0,0,0,0.45));
 }
 
+/* 馬体そのものは毛色(--coat)で塗る。ゼッケン色(--jersey)は頭絡・
+   ゼッケンなどの「アクセント」だけに使うことで、馬番ごとに毛色の違う
+   ポニーに見えるようにしてある。 */
 .horse-body {
   position: absolute;
   left: 19%;
   top: 34%;
   width: 55%;
   height: 36%;
-  background: var(--jersey, #999);
+  background: var(--coat, #999);
   border-radius: 50% 60% 45% 55%;
 }
 /* 首と頭を1つの図形（多角形）として繋げて描くことで、
@@ -856,7 +892,7 @@ html, body {
   top: -42%;
   width: 46%;
   height: 82%;
-  background: var(--jersey, #999);
+  background: var(--coat, #999);
   clip-path: polygon(
     18% 100%, 0% 82%,
     10% 50%, 24% 22%,
@@ -866,6 +902,35 @@ html, body {
     72% 46%, 60% 60%,
     48% 78%, 36% 92%
   );
+}
+/* 頭絡（ヘッドバンド）。ゼッケン色でひと目で馬番の色が分かるように
+   額を横切る帯を重ねる。 */
+.horse-browband {
+  position: absolute;
+  left: 57%;
+  top: -37%;
+  width: 26%;
+  height: 7%;
+  background: var(--jersey, #999);
+  border-radius: 3px;
+  transform: rotate(-8deg);
+  z-index: 1;
+  /* 白毛・黒毛の馬はゼッケン色と毛色が同じになるため、二重の縁取りで
+     どの毛色に対しても輪郭が見えるようにする。 */
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 0 0 2.5px rgba(255,255,255,0.5);
+}
+/* ゼッケン（鞍下の色布）。馬体色とは別にゼッケン色を乗せて、
+   胴体側からも馬番の色がすぐ分かるようにする。 */
+.horse-blanket {
+  position: absolute;
+  left: 30%;
+  top: 40%;
+  width: 34%;
+  height: 22%;
+  background: var(--jersey, #999);
+  border-radius: 20%;
+  opacity: 0.92;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 0 0 2.5px rgba(255,255,255,0.5);
 }
 .horse-mane {
   position: absolute;
@@ -883,7 +948,7 @@ html, body {
   top: -46%;
   width: 6%;
   height: 18%;
-  background: var(--jersey, #999);
+  background: var(--coat, #999);
   border-radius: 60% 60% 20% 20%;
   transform: rotate(8deg);
 }
@@ -985,7 +1050,9 @@ html, body {
 .horse.has-image .horse-tail,
 .horse.has-image .horse-leg,
 .horse.has-image .horse-eye,
-.horse.has-image .horse-cheek {
+.horse.has-image .horse-cheek,
+.horse.has-image .horse-browband,
+.horse.has-image .horse-blanket {
   display: none;
 }
 
@@ -1062,6 +1129,20 @@ html, body {
 @keyframes bodyBob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
+}
+
+/* 馬紹介・投票カード用のアイドルアニメーション（ゆったり呼吸するような
+   動き）。レース中のギャロップ（脚の高速な動き）とは違い、静止画に
+   見えないための控えめな揺れだけにする。 */
+.horse.idle .horse-body { animation: idleBob 1.8s ease-in-out infinite; }
+.horse.idle .horse-tail { animation: idleTailSway 2.2s ease-in-out infinite; }
+@keyframes idleBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4%); }
+}
+@keyframes idleTailSway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-8deg); }
 }
 
 /* ---------- 現在の順位サイドバー（広い画面のみ表示） ---------- */

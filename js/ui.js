@@ -53,6 +53,7 @@ const UI = (() => {
       raceTrack: document.getElementById('race-track'),
       ovalHorses: document.getElementById('oval-horses'),
       ovalFinishLine: document.getElementById('oval-finish-line'),
+      ovalGoalSign: document.getElementById('oval-goal-sign'),
       raceTrackWrap: document.querySelector('.race-track-wrap'),
       raceRanking: document.getElementById('race-ranking'),
       raceCourseInfo: document.getElementById('race-course-info'),
@@ -168,6 +169,34 @@ const UI = (() => {
   }
 
   /**
+   * 馬シルエット（CSSで描いたパーツ一式）のHTMLを組み立てる共通関数。
+   * レース画面（トラック上）と馬紹介・投票画面（カード内）の両方から
+   * 呼ばれる。見た目の変更はここを直せば両画面に反映される。
+   */
+  function buildHorseInnerHtml() {
+    return `
+      <div class="dust-puff dust-puff-1"></div>
+      <div class="dust-puff dust-puff-2"></div>
+      <div class="grass-puff grass-puff-1"></div>
+      <div class="grass-puff grass-puff-2"></div>
+      <div class="horse-tail"></div>
+      <div class="horse-body"></div>
+      <div class="horse-blanket"></div>
+      <div class="horse-leg leg-front-1"></div>
+      <div class="horse-leg leg-front-2"></div>
+      <div class="horse-leg leg-back-1"></div>
+      <div class="horse-leg leg-back-2"></div>
+      <div class="horse-mane"></div>
+      <div class="horse-neck-head"></div>
+      <div class="horse-browband"></div>
+      <div class="horse-ear"></div>
+      <div class="horse-eye"></div>
+      <div class="horse-cheek"></div>
+      <img class="horse-image" alt="">
+    `;
+  }
+
+  /**
    * 出走馬一覧のカードを指定のグリッド要素に描画する。
    * 馬紹介画面・投票受付画面の両方から呼ばれる共通処理。
    */
@@ -186,7 +215,9 @@ const UI = (() => {
       const compatComment = course ? RaceConditions.getCompatibilityComment(horse, course) : '';
       card.innerHTML = `
         <div class="horse-card-illust">
-          <span class="horse-card-emoji">🐴</span>
+          <div class="horse idle card-horse" style="--jersey:${horse.color};--coat:${horse.coat}">
+            ${buildHorseInnerHtml()}
+          </div>
           <img class="horse-card-img" alt="">
           <div class="horse-card-number">${horse.number}</div>
         </div>
@@ -383,23 +414,8 @@ const UI = (() => {
       slot.className = 'horse-slot';
       slot.id = `horse-slot-${horse.number}`;
       slot.innerHTML = `
-        <div class="horse${isDirt ? ' dust-active' : ' grass-active'}" id="horse-${horse.number}" style="--jersey:${horse.color}">
-          <div class="dust-puff dust-puff-1"></div>
-          <div class="dust-puff dust-puff-2"></div>
-          <div class="grass-puff grass-puff-1"></div>
-          <div class="grass-puff grass-puff-2"></div>
-          <div class="horse-tail"></div>
-          <div class="horse-body"></div>
-          <div class="horse-leg leg-front-1"></div>
-          <div class="horse-leg leg-front-2"></div>
-          <div class="horse-leg leg-back-1"></div>
-          <div class="horse-leg leg-back-2"></div>
-          <div class="horse-mane"></div>
-          <div class="horse-neck-head"></div>
-          <div class="horse-ear"></div>
-          <div class="horse-eye"></div>
-          <div class="horse-cheek"></div>
-          <img class="horse-image" alt="">
+        <div class="horse${isDirt ? ' dust-active' : ' grass-active'}" id="horse-${horse.number}" style="--jersey:${horse.color};--coat:${horse.coat}">
+          ${buildHorseInnerHtml()}
         </div>
         <div class="horse-badge">${horse.number}</div>
       `;
@@ -432,6 +448,13 @@ const UI = (() => {
     // (angleDeg)に対してそのまま回転させれば進行方向と垂直（コースを
     // 横切る向き）になる（+90すると逆に進行方向と平行になってしまう）。
     el.ovalFinishLine.style.transform = `translate(-50%, -50%) rotate(${finishPoint.angleDeg}deg)`;
+
+    // 「GOAL」看板：内馬場側（一番内側のレーンよりさらに内側）に立て、
+    // 馬の走路には絶対に被らない位置にする。看板自体は回転させず、
+    // コースのどの向きでも正立で読めるようにする。
+    const goalSignPoint = RaceTrackGeometry.getPosition(0, trackGeo, -(innerMargin + 18));
+    el.ovalGoalSign.style.left = `${wrapW / 2 + goalSignPoint.x}px`;
+    el.ovalGoalSign.style.top = `${wrapH / 2 + goalSignPoint.y}px`;
 
     // 雨の日は水しぶきで足元が見えにくくなるため、track-wrap全体に
     // 雨エフェクトを重ねる。
