@@ -16,7 +16,9 @@ const AppState = (() => {
     commentaryEnabled: true,
     bgmEnabled: true,
     seEnabled: true,
-    volume: 0.7,
+    bgmVolume: 0.7,
+    seVolume: 0.7,
+    voiceVolume: 1.0,
     speechRate: 1.0,
   };
 
@@ -26,7 +28,9 @@ const AppState = (() => {
     currentScreen: 'top',
     timers: [], // setTimeout/setInterval のID一覧（リセット時に一括クリア）
     animationFrameId: null,
-    readyForStart: false, // 投票終了後、STARTボタン待ちかどうか
+    raceNumber: 0, // 「第N レース」の表示に使う通し番号
+    course: null, // RaceConditions.pickRandomCourse() の戻り値
+    weather: null, // RaceConditions.pickRandomWeather() の戻り値
   };
 
   function registerTimer(id) {

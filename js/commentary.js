@@ -62,6 +62,33 @@ const Commentary = (() => {
       '差はほとんどありません！',
       'まさに大接戦、ゴールまでもつれ込みます！',
     ],
+    // 脚質ごとの実況（現在の先頭馬の脚質に応じて選ばれる）
+    styleNige: [
+      '{n}番、好スタート！そのまま逃げる！',
+      '{n}番が単騎で先頭に立ちました！',
+      '{n}番、逃げのお手本のような走りです！',
+    ],
+    styleSenko: [
+      '{n}番、好位につけています！',
+      '{n}番が前方でうまく脚をためています！',
+      '{n}番、安定した先行策です！',
+    ],
+    styleSashi: [
+      '{n}番、中団からじわじわ上がってきた！',
+      '{n}番がじわりと順位を上げています！',
+      '{n}番、様子を見ながら上がってきました！',
+    ],
+    styleOikomi: [
+      '{n}番、後方から一気に追い込む！',
+      '{n}番、大外からまくってきた！',
+      '{n}番、一気の追い込みを見せています！',
+    ],
+    // 重馬場で失速が目立つ場面の実況
+    heavyStruggle: [
+      '足元が重い！前の馬が苦しくなってきた！',
+      '重い馬場に苦戦する馬が出てきました！',
+      '馬場が悪く、脚を取られている馬がいます！',
+    ],
     finishLine: [
       'ゴールイン！',
       'ゴールしました！',
@@ -86,10 +113,21 @@ const Commentary = (() => {
       .replace(/{name}/g, context.name ?? '');
   }
 
+  let lastTemplate = null;
+
   function pickLine(category, context) {
     const pool = LINES[category];
     if (!pool || pool.length === 0) return '';
-    const template = pool[Math.floor(Math.random() * pool.length)];
+    let template = pool[Math.floor(Math.random() * pool.length)];
+    // 同じセリフが連続しないよう、プールが2つ以上あれば選び直す
+    if (pool.length > 1) {
+      let attempts = 0;
+      while (template === lastTemplate && attempts < 5) {
+        template = pool[Math.floor(Math.random() * pool.length)];
+        attempts += 1;
+      }
+    }
+    lastTemplate = template;
     return fillTemplate(template, context);
   }
 
@@ -106,15 +144,47 @@ const Commentary = (() => {
       utterance.lang = 'ja-JP';
       utterance.rate = rate;
       utterance.volume = volume;
-      synth.speak(utterance);
+      // Chromeではcancel()の直後にspeak()すると発話が無視されることが
+      // あるため、1ティック遅らせてから読み上げる。
+      setTimeout(() => {
+        if (!enabled) return;
+        synth.speak(utterance);
+      }, 50);
     } catch (e) {
       // 実況が失敗してもゲーム進行には影響させない
       console.warn('[Commentary] speak failed', e);
     }
   }
 
+  let unlocked = false;
+
+  /**
+   * ユーザーの最初のタップ／クリックのタイミングで一度だけ呼び出す。
+   * 無音に近いセリフを一度読み上げておくことで、以降タイマー経由
+   * （ユーザー操作の外）でのspeak()がブロックされないようにする
+   * （スマホのブラウザで特に重要）。
+   */
+  function unlock() {
+    if (unlocked || !supported) return;
+    unlocked = true;
+    try {
+      const utterance = new SpeechSynthesisUtterance(' ');
+      utterance.volume = 0;
+      synth.speak(utterance);
+    } catch (e) {
+      // 無視してよい
+    }
+  }
+
+  /**
+   * カテゴリからセリフを選んで読み上げる。
+   * 画面へのテロップ表示など、選ばれたテキストを呼び出し元でも
+   * 使えるように返り値として返す。
+   */
   function speakCategory(category, context) {
-    speak(pickLine(category, context));
+    const text = pickLine(category, context);
+    speak(text);
+    return text;
   }
 
   function setEnabled(value) {
@@ -134,6 +204,7 @@ const Commentary = (() => {
     speak,
     speakCategory,
     pickLine,
+    unlock,
     setEnabled,
     setRate,
     setVolume,

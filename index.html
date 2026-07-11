@@ -12,31 +12,39 @@
 
   <!-- ============ トップ画面 ============ -->
   <section id="screen-top" class="screen active">
-    <div class="top-bg-glow"></div>
+    <div class="top-sun"></div>
+    <div class="top-cloud top-cloud-1"></div>
+    <div class="top-cloud top-cloud-2"></div>
     <h1 class="title">
       <span class="title-line1">FUKASHIGI</span>
       <span class="title-line2">HORSE RACE</span>
     </h1>
     <div class="menu-buttons">
-      <button id="btn-new-race" class="btn btn-gold">新しいレース</button>
+      <button id="btn-new-race" class="btn btn-primary">新しいレース</button>
       <button id="btn-howto" class="btn btn-outline">遊び方</button>
     </div>
+    <button id="btn-sound-on" class="btn-sound">🔊 音声をONにする</button>
   </section>
 
   <!-- ============ 馬紹介画面 ============ -->
-  <section id="screen-lineup" class="screen">
+  <section id="screen-lineup" class="screen screen-lineup">
     <h2 class="screen-title">出走馬紹介</h2>
+    <div id="lineup-race-info" class="race-info"></div>
     <div id="lineup-timer" class="timer-badge"></div>
     <div id="lineup-grid" class="lineup-grid"></div>
     <button id="btn-skip-lineup" class="btn btn-outline btn-skip">投票開始へ進む</button>
   </section>
 
   <!-- ============ 投票受付画面 ============ -->
-  <section id="screen-voting" class="screen">
-    <h2 class="voting-heading">投票受付中</h2>
-    <div id="voting-timer" class="voting-timer">90</div>
-    <p class="voting-sub">紙の投票券をご記入ください</p>
-    <div id="voting-ready-message" class="ready-message hidden">まもなくレース開始です...</div>
+  <section id="screen-voting" class="screen screen-voting">
+    <div class="voting-header">
+      <h2 id="voting-heading" class="voting-heading">投票受付中</h2>
+      <div id="voting-race-info" class="race-info race-info-compact"></div>
+      <div id="voting-timer" class="voting-timer">90</div>
+      <p class="voting-sub">紙の投票券をご記入ください</p>
+      <div id="voting-ticker" class="commentary-ticker voting-ticker hidden"></div>
+    </div>
+    <div id="voting-grid" class="lineup-grid voting-grid"></div>
   </section>
 
   <!-- ============ カウントダウン画面 ============ -->
@@ -45,18 +53,50 @@
   </section>
 
   <!-- ============ レース画面 ============ -->
-  <section id="screen-race" class="screen">
-    <h2 class="screen-title race-title">RACE!!</h2>
-    <div id="race-track" class="race-track"></div>
+  <section id="screen-race" class="screen screen-race">
+    <div class="race-header">
+      <h2 class="race-title">RACE!!</h2>
+      <div class="race-distance-meter">
+        <span class="race-distance-label">START</span>
+        <div class="race-distance-bar"><div id="race-distance-fill" class="race-distance-fill"></div></div>
+        <span class="race-distance-label">GOAL</span>
+      </div>
+    </div>
+    <div id="race-course-info" class="race-course-info"></div>
+    <div id="commentary-ticker" class="commentary-ticker"></div>
+    <div class="race-main">
+      <div class="race-track-wrap">
+        <div class="race-bg-lights"></div>
+        <div class="race-sky">
+          <div class="race-cloud race-cloud-1"></div>
+          <div class="race-cloud race-cloud-2"></div>
+        </div>
+        <div class="race-grandstand"></div>
+        <div id="race-track" class="race-track">
+          <div class="oval-infield"></div>
+          <div id="oval-finish-line" class="oval-finish-line"></div>
+          <div id="oval-goal-sign" class="oval-goal-sign"><span>GOAL</span></div>
+          <div id="oval-horses" class="oval-horses"></div>
+        </div>
+        <div id="race-rain" class="race-rain hidden"></div>
+      </div>
+      <div id="race-ranking" class="race-ranking"></div>
+    </div>
+    <div id="photo-finish-overlay" class="photo-finish-overlay hidden">
+      <div id="pf-flash" class="pf-flash"></div>
+      <div id="pf-text" class="pf-text">GOAL!</div>
+    </div>
   </section>
 
   <!-- ============ 結果画面 ============ -->
-  <section id="screen-result" class="screen">
-    <h2 class="screen-title">レース結果</h2>
-    <div id="result-winner" class="result-winner"></div>
-    <div id="result-podium" class="result-podium"></div>
-    <div id="result-list" class="result-list"></div>
-    <button id="btn-restart" class="btn btn-gold">もう一度レース</button>
+  <section id="screen-result" class="screen screen-result">
+    <div class="scoreboard">
+      <h2 class="scoreboard-title">レース結果</h2>
+      <div id="result-winner" class="result-winner"></div>
+      <div id="result-podium" class="result-podium"></div>
+      <div id="result-list" class="result-list"></div>
+    </div>
+    <button id="btn-restart" class="btn btn-primary">もう一度レース</button>
   </section>
 
 </div>
@@ -86,8 +126,8 @@
 
   <div class="admin-section">
     <div class="admin-actions">
-      <button id="admin-new-race" class="btn btn-gold btn-small">新しいレース</button>
-      <button id="admin-start" class="btn btn-gold btn-small">START</button>
+      <button id="admin-new-race" class="btn btn-primary btn-small">新しいレース</button>
+      <button id="admin-start" class="btn btn-primary btn-small">START</button>
       <button id="admin-reset" class="btn btn-outline btn-small">リセット</button>
     </div>
   </div>
@@ -107,15 +147,34 @@
   </div>
 
   <div class="admin-section">
-    <h3>音量 / 実況速度</h3>
-    <label>音量 <input type="range" id="admin-volume" min="0" max="1" step="0.05"></label>
+    <h3>音量</h3>
+    <label>BGM音量 <input type="range" id="admin-bgm-volume" min="0" max="1" step="0.05"></label>
+    <label>効果音音量 <input type="range" id="admin-se-volume" min="0" max="1" step="0.05"></label>
+    <label>実況音量 <input type="range" id="admin-voice-volume" min="0" max="1" step="0.05"></label>
     <label>実況速度 <input type="range" id="admin-speech-rate" min="0.5" max="1.5" step="0.05"></label>
+  </div>
+
+  <div class="admin-section">
+    <h3>音声デバッグ</h3>
+    <div class="admin-actions">
+      <button id="admin-test-bgm-title" class="btn btn-outline btn-small">タイトルBGMテスト</button>
+      <button id="admin-test-bgm-entry" class="btn btn-outline btn-small">紹介BGMテスト</button>
+      <button id="admin-test-bgm-vote" class="btn btn-outline btn-small">投票前BGMテスト</button>
+      <button id="admin-test-bgm-race" class="btn btn-outline btn-small">レースBGMテスト</button>
+      <button id="admin-test-bgm-result" class="btn btn-outline btn-small">結果BGMテスト</button>
+      <button id="admin-test-se-start" class="btn btn-outline btn-small">スタート音テスト</button>
+      <button id="admin-test-se-goal" class="btn btn-outline btn-small">ゴール音テスト</button>
+      <button id="admin-test-voice" class="btn btn-outline btn-small">実況テスト</button>
+    </div>
+    <div id="admin-audio-status" class="admin-audio-status"></div>
   </div>
 </div>
 
 <script src="js/horseNames.js"></script>
+<script src="js/raceConditions.js"></script>
 <script src="js/horseGenerator.js"></script>
 <script src="js/raceEngine.js"></script>
+<script src="js/raceTrackGeometry.js"></script>
 <script src="js/commentary.js"></script>
 <script src="js/audioManager.js"></script>
 <script src="js/appState.js"></script>
