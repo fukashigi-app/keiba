@@ -8,13 +8,14 @@
 document.addEventListener('DOMContentLoaded', () => {
   Commentary.setEnabled(AppState.settings.commentaryEnabled);
   Commentary.setRate(AppState.settings.speechRate);
-  Commentary.setVolume(AppState.settings.volume);
+  Commentary.setVolume(AppState.settings.voiceVolume);
 
   UI.init();
   Admin.init();
 
   // 初期音量・BGM/SE設定を反映
-  AudioManager.setVolume(AppState.settings.volume);
+  AudioManager.setBgmVolume(AppState.settings.bgmVolume);
+  AudioManager.setSeVolume(AppState.settings.seVolume);
   AudioManager.setBgmEnabled(AppState.settings.bgmEnabled);
   AudioManager.setSeEnabled(AppState.settings.seEnabled);
 

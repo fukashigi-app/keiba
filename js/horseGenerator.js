@@ -26,6 +26,12 @@ const HorseGenerator = (() => {
     '#2b2b2b', // 8: 黒
   ];
 
+  // 差し替え可能な馬イラスト（assets/images/horse_<色名>.png）のファイル名に
+  // 使う色名。JERSEY_COLORSと同じ並び順（馬番=インデックス+1）。
+  const JERSEY_COLOR_NAMES = [
+    'red', 'blue', 'yellow', 'green', 'purple', 'orange', 'white', 'black',
+  ];
+
   /**
    * 40〜99の範囲で能力値を生成する。
    * 極端に低い能力（1桁など）を避け、どの馬にも見せ場が
@@ -61,6 +67,7 @@ const HorseGenerator = (() => {
         heavyAptitude: randomAptitude(),
         runningStyle: RaceConditions.pickRandomRunningStyle(),
         color: JERSEY_COLORS[i % JERSEY_COLORS.length],
+        colorName: JERSEY_COLOR_NAMES[i % JERSEY_COLOR_NAMES.length],
       });
     }
     return horses;

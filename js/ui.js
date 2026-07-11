@@ -75,14 +75,15 @@ const UI = (() => {
   }
 
   function bindEvents() {
-    el.btnNewRace.addEventListener('click', startNewRace);
-    el.btnHowto.addEventListener('click', () => el.modalHowto.classList.remove('hidden'));
-    el.btnCloseHowto.addEventListener('click', () => el.modalHowto.classList.add('hidden'));
+    el.btnNewRace.addEventListener('click', () => { AudioManager.playSe('decide'); startNewRace(); });
+    el.btnHowto.addEventListener('click', () => { AudioManager.playSe('click'); el.modalHowto.classList.remove('hidden'); });
+    el.btnCloseHowto.addEventListener('click', () => { AudioManager.playSe('click'); el.modalHowto.classList.add('hidden'); });
     el.btnSkipLineup.addEventListener('click', () => {
+      AudioManager.playSe('click');
       AppState.clearAllTimers();
       startVotingPhase();
     });
-    el.btnRestart.addEventListener('click', startNewRace);
+    el.btnRestart.addEventListener('click', () => { AudioManager.playSe('decide'); startNewRace(); });
     el.btnSoundOn.addEventListener('click', enableSound);
   }
 
@@ -90,10 +91,14 @@ const UI = (() => {
    * トップ画面の「🔊 音声をONにする」ボタン。
    * ユーザー操作の中で明示的に音声再生を解錠し、確認のセリフを
    * 読み上げることで、音が出ているかその場で分かるようにする。
+   * タイトルBGMもここで初めて再生を開始する（自動再生制限のため
+   * ページ読み込み時には鳴らせない）。
    */
   function enableSound() {
     AudioManager.unlock();
     Commentary.unlock();
+    AudioManager.playSe('click');
+    AudioManager.fadeToBgm('title', 900);
     Commentary.speak('音声が有効になりました');
     el.btnSoundOn.textContent = '🔊 音声ON';
     el.btnSoundOn.classList.add('sound-on');
@@ -129,7 +134,7 @@ const UI = (() => {
     renderRaceInfo(el.lineupRaceInfo);
     renderHorseGrid(el.lineupGrid, AppState.runtime.horses, AppState.runtime.course);
     showScreen('lineup');
-    AudioManager.fadeToBgm('vote', 900);
+    AudioManager.fadeToBgm('entry', 900);
     startLineupCountdown();
   }
 
@@ -206,7 +211,7 @@ const UI = (() => {
       const img = card.querySelector('.horse-card-img');
       img.addEventListener('load', () => card.classList.add('has-image'));
       img.addEventListener('error', () => img.removeAttribute('src'));
-      img.src = `assets/images/horse${horse.number}.png`;
+      img.src = `assets/images/horse_${horse.colorName}.png`;
     });
   }
 
@@ -234,6 +239,7 @@ const UI = (() => {
     showScreen('voting');
     el.votingHeading.textContent = '投票受付中';
     el.votingTicker.classList.add('hidden');
+    AudioManager.fadeToBgm('vote', 900);
 
     let remaining = AppState.settings.votingDuration;
     el.votingTimer.textContent = remaining;
@@ -257,6 +263,7 @@ const UI = (() => {
           announcedEnd = true;
           el.votingHeading.textContent = '投票終了！';
           announceVotingEnd('投票終了です', '投票終了です。');
+          AudioManager.playSe('countdown');
         }
         AudioManager.fadeOutBgm(600);
         // 投票終了アナウンスが聞こえる猶予を置いてから、
@@ -309,6 +316,8 @@ const UI = (() => {
         AudioManager.playSe('gate');
         AudioManager.playSe('start');
         Commentary.speakCategory('start');
+      } else {
+        AudioManager.playSe('tick');
       }
 
       i += 1;
@@ -374,9 +383,11 @@ const UI = (() => {
       slot.className = 'horse-slot';
       slot.id = `horse-slot-${horse.number}`;
       slot.innerHTML = `
-        <div class="horse${isDirt ? ' dust-active' : ''}" id="horse-${horse.number}" style="--jersey:${horse.color}">
+        <div class="horse${isDirt ? ' dust-active' : ' grass-active'}" id="horse-${horse.number}" style="--jersey:${horse.color}">
           <div class="dust-puff dust-puff-1"></div>
           <div class="dust-puff dust-puff-2"></div>
+          <div class="grass-puff grass-puff-1"></div>
+          <div class="grass-puff grass-puff-2"></div>
           <div class="horse-tail"></div>
           <div class="horse-body"></div>
           <div class="horse-leg leg-front-1"></div>
@@ -395,7 +406,7 @@ const UI = (() => {
       el.ovalHorses.appendChild(slot);
     });
 
-    // 差し替え可能な馬イラスト（assets/images/horseN.png）。読み込めた
+    // 差し替え可能な馬イラスト（assets/images/horse_<色名>.png）。読み込めた
     // 場合だけ表示し、無い場合はCSSシルエットのまま表示を続ける。
     horses.forEach((horse) => {
       const img = document.querySelector(`#horse-${horse.number} .horse-image`);
@@ -406,7 +417,7 @@ const UI = (() => {
       img.addEventListener('error', () => {
         img.removeAttribute('src');
       });
-      img.src = `assets/images/horse${horse.number}.png`;
+      img.src = `assets/images/horse_${horse.colorName}.png`;
     });
 
     // ゴール板：スタート＝ゴール地点に、進行方向と垂直な板を1本置く。
@@ -445,6 +456,10 @@ const UI = (() => {
     horseEl.style.transform = `scaleX(${flip}) rotate(${bank}deg)`;
   }
 
+  // レース中の暫定首位（1位）が入れ替わった瞬間に「順位表示音」を鳴らす
+  // ための記録。レース開始のたびにリセットする。
+  let lastLeaderNumber = null;
+
   /**
    * 現在の順位サイドバー（広い画面のみ表示）を更新する。
    */
@@ -452,6 +467,12 @@ const UI = (() => {
     const ranked = horses
       .map((horse, i) => ({ horse, value: currentFrame[i] }))
       .sort((a, b) => b.value - a.value);
+
+    const leaderNumber = ranked[0].horse.number;
+    if (lastLeaderNumber !== null && leaderNumber !== lastLeaderNumber) {
+      AudioManager.playSe('rankup');
+    }
+    lastLeaderNumber = leaderNumber;
 
     el.raceRanking.innerHTML = `
       <div class="race-ranking-title">順位</div>
@@ -470,6 +491,7 @@ const UI = (() => {
     const { course, weather } = AppState.runtime;
     const result = RaceEngine.simulateRace(horses, duration, course, weather);
     AppState.runtime.raceResult = result;
+    lastLeaderNumber = null;
 
     // 画面を表示してからDOMを構築する。非表示(display:none)のままだと
     // 馬要素の実測幅(offsetWidth)が0になってしまうため。
@@ -531,11 +553,12 @@ const UI = (() => {
         AudioManager.playSe('running');
       }
 
-      // 最後の直線：トラックをわずかにズーム＆点滅させ、BGMもわずかに盛り上げる
+      // 最後の直線：トラックをわずかにズーム＆点滅させ、BGM・歓声もわずかに盛り上げる
       if (progress > 0.85 && !finalStretchStarted) {
         finalStretchStarted = true;
         el.raceTrackWrap.classList.add('final-stretch');
         AudioManager.raiseBgmForFinalStretch();
+        AudioManager.playSe('cheer');
       }
 
       if (progress < 1) {
@@ -690,7 +713,7 @@ const UI = (() => {
   // ------------------------------------------------------------
   function resetToTop() {
     AppState.clearAllTimers();
-    AudioManager.stopBgm();
+    AudioManager.fadeToBgm('title', 700);
     Commentary.setEnabled(Commentary.isSupported() && AppState.settings.commentaryEnabled);
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     AppState.runtime.horses = [];

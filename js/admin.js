@@ -29,11 +29,16 @@ const Admin = (() => {
       bgmToggle: document.getElementById('admin-bgm-toggle'),
       seToggle: document.getElementById('admin-se-toggle'),
 
-      volume: document.getElementById('admin-volume'),
+      bgmVolume: document.getElementById('admin-bgm-volume'),
+      seVolume: document.getElementById('admin-se-volume'),
+      voiceVolume: document.getElementById('admin-voice-volume'),
       speechRate: document.getElementById('admin-speech-rate'),
 
+      testBgmTitleBtn: document.getElementById('admin-test-bgm-title'),
+      testBgmEntryBtn: document.getElementById('admin-test-bgm-entry'),
       testBgmVoteBtn: document.getElementById('admin-test-bgm-vote'),
       testBgmRaceBtn: document.getElementById('admin-test-bgm-race'),
+      testBgmResultBtn: document.getElementById('admin-test-bgm-result'),
       testSeStartBtn: document.getElementById('admin-test-se-start'),
       testSeGoalBtn: document.getElementById('admin-test-se-goal'),
       testVoiceBtn: document.getElementById('admin-test-voice'),
@@ -52,7 +57,9 @@ const Admin = (() => {
     el.commentaryToggle.checked = s.commentaryEnabled;
     el.bgmToggle.checked = s.bgmEnabled;
     el.seToggle.checked = s.seEnabled;
-    el.volume.value = s.volume;
+    el.bgmVolume.value = s.bgmVolume;
+    el.seVolume.value = s.seVolume;
+    el.voiceVolume.value = s.voiceVolume;
     el.speechRate.value = s.speechRate;
   }
 
@@ -69,9 +76,9 @@ const Admin = (() => {
       el.panel.classList.add('hidden');
     });
 
-    el.btnNewRace.addEventListener('click', () => UI.startNewRace());
-    el.btnStart.addEventListener('click', () => UI.adminStartRace());
-    el.btnReset.addEventListener('click', () => UI.resetToTop());
+    el.btnNewRace.addEventListener('click', () => { AudioManager.playSe('decide'); UI.startNewRace(); });
+    el.btnStart.addEventListener('click', () => { AudioManager.playSe('decide'); UI.adminStartRace(); });
+    el.btnReset.addEventListener('click', () => { AudioManager.playSe('click'); UI.resetToTop(); });
 
     el.lineupDuration.addEventListener('change', (e) => {
       AppState.settings.lineupDuration = Math.max(5, Number(e.target.value) || 30);
@@ -96,10 +103,20 @@ const Admin = (() => {
       AudioManager.setSeEnabled(e.target.checked);
     });
 
-    el.volume.addEventListener('input', (e) => {
+    el.bgmVolume.addEventListener('input', (e) => {
       const value = Number(e.target.value);
-      AppState.settings.volume = value;
-      AudioManager.setVolume(value);
+      AppState.settings.bgmVolume = value;
+      AudioManager.setBgmVolume(value);
+    });
+    el.seVolume.addEventListener('input', (e) => {
+      const value = Number(e.target.value);
+      AppState.settings.seVolume = value;
+      AudioManager.setSeVolume(value);
+    });
+    el.voiceVolume.addEventListener('input', (e) => {
+      const value = Number(e.target.value);
+      AppState.settings.voiceVolume = value;
+      Commentary.setVolume(value);
     });
     el.speechRate.addEventListener('input', (e) => {
       const value = Number(e.target.value);
@@ -107,6 +124,16 @@ const Admin = (() => {
       Commentary.setRate(value);
     });
 
+    el.testBgmTitleBtn.addEventListener('click', () => {
+      AudioManager.unlock();
+      AudioManager.testBgm('title');
+      window.setTimeout(showAudioDiagnostics, 400);
+    });
+    el.testBgmEntryBtn.addEventListener('click', () => {
+      AudioManager.unlock();
+      AudioManager.testBgm('entry');
+      window.setTimeout(showAudioDiagnostics, 400);
+    });
     el.testBgmVoteBtn.addEventListener('click', () => {
       AudioManager.unlock();
       AudioManager.testBgm('vote');
@@ -115,6 +142,11 @@ const Admin = (() => {
     el.testBgmRaceBtn.addEventListener('click', () => {
       AudioManager.unlock();
       AudioManager.testBgm('race');
+      window.setTimeout(showAudioDiagnostics, 400);
+    });
+    el.testBgmResultBtn.addEventListener('click', () => {
+      AudioManager.unlock();
+      AudioManager.testBgm('result');
       window.setTimeout(showAudioDiagnostics, 400);
     });
     el.testSeStartBtn.addEventListener('click', () => {
@@ -157,8 +189,8 @@ const Admin = (() => {
     if (missingFiles.length > 0) {
       reasons.push(`音声ファイルが見つかりません（${missingFiles.join(', ')}）`);
     }
-    if (diag.volume <= 0) {
-      reasons.push('音量が0に設定されています');
+    if (diag.bgmVolume <= 0 && diag.seVolume <= 0) {
+      reasons.push('BGM・効果音の音量が0に設定されています');
     }
     if (!diag.bgmEnabled && !diag.seEnabled) {
       reasons.push('BGM・効果音がOFFになっています');

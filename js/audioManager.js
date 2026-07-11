@@ -13,18 +13,25 @@
 
 const AudioManager = (() => {
   const BGM_FILES = {
+    title: 'assets/audio/bgm-title.mp3',
+    entry: 'assets/audio/bgm-entry.mp3',
     vote: 'assets/audio/bgm-vote.mp3',
     race: 'assets/audio/bgm-race.mp3',
     result: 'assets/audio/bgm-result.mp3',
   };
 
   const SE_FILES = {
+    click: 'assets/audio/click.mp3',
+    decide: 'assets/audio/decide.mp3',
+    countdown: 'assets/audio/countdown.mp3',
+    tick: 'assets/audio/tick.mp3',
     start: 'assets/audio/start.mp3',
     gate: 'assets/audio/gate.mp3',
     running: 'assets/audio/running.mp3',
     cheer: 'assets/audio/cheer.mp3',
     goal: 'assets/audio/goal.mp3',
     fanfare: 'assets/audio/fanfare.mp3',
+    rankup: 'assets/audio/rankup.mp3',
   };
 
   // 同じ効果音を連続再生できるよう、キーごとに複数のAudio要素を
@@ -35,7 +42,8 @@ const AudioManager = (() => {
 
   let bgmEnabled = true;
   let seEnabled = true;
-  let masterVolume = 0.7;
+  let bgmVolume = 0.7;
+  let seVolume = 0.7;
   let unlocked = false;
   let audioContext = null;
 
@@ -147,7 +155,7 @@ const AudioManager = (() => {
     if (!bgmEnabled) return;
     const audio = bgmElements[key];
     if (!audio) return;
-    audio.volume = masterVolume;
+    audio.volume = bgmVolume;
     audio.currentTime = 0;
     currentBgm = audio;
     currentBgmKey = key;
@@ -193,7 +201,7 @@ const AudioManager = (() => {
       } else {
         audio.pause();
         audio.currentTime = 0;
-        audio.volume = masterVolume;
+        audio.volume = bgmVolume;
       }
     }
     requestAnimationFrame(step);
@@ -204,7 +212,7 @@ const AudioManager = (() => {
    */
   function raiseBgmForFinalStretch() {
     if (currentBgm) {
-      currentBgm.volume = Math.min(1, masterVolume * 1.2);
+      currentBgm.volume = Math.min(1, bgmVolume * 1.2);
     }
   }
 
@@ -240,7 +248,7 @@ const AudioManager = (() => {
         outgoing.volume = outgoingStartVolume * (1 - t);
       }
       if (incoming) {
-        incoming.volume = masterVolume * t;
+        incoming.volume = bgmVolume * t;
       }
       if (t < 1) {
         requestAnimationFrame(step);
@@ -248,7 +256,7 @@ const AudioManager = (() => {
         if (outgoing && outgoing !== incoming) {
           outgoing.pause();
           outgoing.currentTime = 0;
-          outgoing.volume = masterVolume;
+          outgoing.volume = bgmVolume;
         }
         if (incoming) {
           currentBgm = incoming;
@@ -266,7 +274,7 @@ const AudioManager = (() => {
     const audio = pool[sePoolIndex[key]];
     sePoolIndex[key] = (sePoolIndex[key] + 1) % pool.length;
     audio.currentTime = 0;
-    audio.volume = masterVolume;
+    audio.volume = seVolume;
     safePlay(audio);
   }
 
@@ -280,9 +288,13 @@ const AudioManager = (() => {
     seEnabled = value;
   }
 
-  function setVolume(value) {
-    masterVolume = value;
-    if (currentBgm) currentBgm.volume = masterVolume;
+  function setBgmVolume(value) {
+    bgmVolume = value;
+    if (currentBgm) currentBgm.volume = bgmVolume;
+  }
+
+  function setSeVolume(value) {
+    seVolume = value;
   }
 
   /**
@@ -294,7 +306,8 @@ const AudioManager = (() => {
       unlocked,
       bgmEnabled,
       seEnabled,
-      volume: masterVolume,
+      bgmVolume,
+      seVolume,
       audioContextState: audioContext ? audioContext.state : 'none',
       fileStatus: { ...fileStatus },
       lastPlayError,
@@ -323,7 +336,8 @@ const AudioManager = (() => {
     playSe,
     setBgmEnabled,
     setSeEnabled,
-    setVolume,
+    setBgmVolume,
+    setSeVolume,
     getDiagnostics,
     testBgm,
     testSe,

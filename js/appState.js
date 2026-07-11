@@ -16,7 +16,9 @@ const AppState = (() => {
     commentaryEnabled: true,
     bgmEnabled: true,
     seEnabled: true,
-    volume: 0.7,
+    bgmVolume: 0.7,
+    seVolume: 0.7,
+    voiceVolume: 1.0,
     speechRate: 1.0,
   };
 
