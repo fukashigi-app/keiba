@@ -129,7 +129,7 @@ const UI = (() => {
     renderRaceInfo(el.lineupRaceInfo);
     renderHorseGrid(el.lineupGrid, AppState.runtime.horses, AppState.runtime.course);
     showScreen('lineup');
-    AudioManager.playBgm('vote');
+    AudioManager.fadeToBgm('vote', 900);
     startLineupCountdown();
   }
 
@@ -480,7 +480,7 @@ const UI = (() => {
     el.commentaryTicker.textContent = '';
     el.raceDistanceFill.style.width = '0%';
     el.raceTrackWrap.classList.remove('final-stretch');
-    AudioManager.playBgm('race');
+    AudioManager.fadeToBgm('race', 900);
     AudioManager.playSe('running');
 
     const startTime = performance.now();
@@ -639,8 +639,7 @@ const UI = (() => {
   // 4. 結果発表
   // ------------------------------------------------------------
   function showResult(result) {
-    AudioManager.stopBgm();
-    AudioManager.playBgm('result');
+    AudioManager.fadeToBgm('result', 900);
     AudioManager.playSe('fanfare');
     showScreen('result');
 

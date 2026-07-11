@@ -183,7 +183,10 @@ const AudioManager = (() => {
 
     function step(now) {
       if (myToken !== fadeToken) return;
-      const t = Math.min(1, (now - startTime) / durationMs);
+      // requestAnimationFrame の最初のtimestampはstartTime取得より前の
+      // 値になることがあるため、tが負にならないようクランプする
+      // （そのままだと volume に負の値を代入して例外になる）。
+      const t = Math.max(0, Math.min(1, (now - startTime) / durationMs));
       audio.volume = startVolume * (1 - t);
       if (t < 1) {
         requestAnimationFrame(step);
@@ -203,6 +206,57 @@ const AudioManager = (() => {
     if (currentBgm) {
       currentBgm.volume = Math.min(1, masterVolume * 1.2);
     }
+  }
+
+  /**
+   * 店舗BGMとして、場面転換のたびに自然にクロスフェードで切り替える。
+   * 再生中のBGMがあれば同時にフェードアウトさせながら、次のBGMを
+   * フェードインする（無ければ単純なフェードインになる）。
+   * トップ→馬紹介/投票→レース→結果、の各切り替えで共通して使う。
+   */
+  function fadeToBgm(key, durationMs = 900) {
+    const outgoing = currentBgm;
+    const outgoingStartVolume = outgoing ? outgoing.volume : 0;
+    currentBgm = null;
+    currentBgmKey = null;
+
+    const incoming = bgmEnabled ? bgmElements[key] : null;
+    if (incoming && incoming !== outgoing) {
+      incoming.currentTime = 0;
+      incoming.volume = 0;
+      safePlay(incoming);
+    }
+
+    const myToken = ++fadeToken;
+    const startTime = performance.now();
+
+    function step(now) {
+      if (myToken !== fadeToken) return;
+      // requestAnimationFrame の最初のtimestampはstartTime取得より前の
+      // 値になることがあるため、tが負にならないようクランプする
+      // （そのままだと volume に負の値を代入して例外になる）。
+      const t = Math.max(0, Math.min(1, (now - startTime) / durationMs));
+      if (outgoing && outgoing !== incoming) {
+        outgoing.volume = outgoingStartVolume * (1 - t);
+      }
+      if (incoming) {
+        incoming.volume = masterVolume * t;
+      }
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        if (outgoing && outgoing !== incoming) {
+          outgoing.pause();
+          outgoing.currentTime = 0;
+          outgoing.volume = masterVolume;
+        }
+        if (incoming) {
+          currentBgm = incoming;
+          currentBgmKey = key;
+        }
+      }
+    }
+    requestAnimationFrame(step);
   }
 
   function playSe(key) {
@@ -264,6 +318,7 @@ const AudioManager = (() => {
     playBgm,
     stopBgm,
     fadeOutBgm,
+    fadeToBgm,
     raiseBgmForFinalStretch,
     playSe,
     setBgmEnabled,

@@ -1409,6 +1409,87 @@ body.race-in-progress .admin-panel {
 }
 
 /* ============================================================
+   PC・大型モニター優先レイアウト（1366×768〜1920×1080を想定）
+   店舗の大型モニターに複数人で映すことを前提に、離れた場所からでも
+   馬番・実況・コース状況が読めるよう、コンテナ幅と文字サイズを
+   まとめて引き上げる。スマホ表示（上記の各スタイル）はそのまま
+   ベースとして維持し、ここでは広い画面向けの上書きのみ行う。
+   ============================================================ */
+@media (min-width: 1024px) {
+  .lineup-grid,
+  .race-header,
+  .race-course-info,
+  .commentary-ticker,
+  .race-main {
+    max-width: 1820px;
+  }
+
+  .screen-title { font-size: 2.6rem; }
+
+  /* 出走馬紹介・投票カード：情報量はそのままに、文字とバッジを拡大 */
+  .horse-card { padding: 20px; }
+  .lineup-grid { gap: 22px; }
+  .horse-card-illust { height: 130px; font-size: 4rem; margin-bottom: 10px; }
+  .horse-card-number { width: 56px; height: 56px; font-size: 2.1rem; }
+  .horse-card-name { font-size: 1.55rem; margin-bottom: 12px; }
+  .stat-row { grid-template-columns: 76px 1fr 38px; font-size: 1rem; margin-bottom: 7px; }
+  .stat-bar { height: 10px; }
+  .condition-pill, .favored-pill, .style-pill { font-size: 0.85rem; padding: 4px 12px; }
+  .compat-comment { font-size: 0.95rem; line-height: 1.5; }
+  .aptitude-item { font-size: 0.85rem; }
+  .aptitude-stars { font-size: 1rem; }
+
+  .voting-heading { font-size: 2.4rem; }
+  .voting-timer { font-size: 5rem; }
+  .voting-sub { font-size: 1.1rem; }
+  .voting-ticker { max-width: 720px; font-size: 1.3rem; }
+
+  /* レース画面：実況・コース情報を大きく、離れた場所からも読めるように */
+  .race-title { font-size: 2.2rem; }
+  .race-distance-meter { font-size: 0.9rem; }
+  .race-course-info { font-size: 1.15rem; padding: 8px 24px; }
+  .commentary-ticker {
+    font-size: 1.6rem;
+    min-height: 2.2em;
+    padding: 10px 28px;
+  }
+
+  .race-ranking { flex: 0 0 190px; padding: 14px; }
+  .race-ranking-title { font-size: 1.05rem; margin-bottom: 6px; }
+  .race-ranking-item { font-size: 1.05rem; gap: 10px; padding: 6px 10px; }
+  .race-ranking-badge { width: 30px; height: 30px; font-size: 0.95rem; }
+
+  /* ボタン・音声ONボタンを大画面向けに大きく */
+  .btn { font-size: 1.4rem; padding: 20px 48px; }
+  .btn-small { font-size: 1rem; padding: 10px 22px; }
+  .btn-sound { font-size: 1.25rem; padding: 18px 36px; }
+
+  /* 結果画面：電光掲示板をより大きく、遠くからでも見えるように */
+  .scoreboard { max-width: 880px; padding: 32px 40px; }
+  .scoreboard-title { font-size: 1.8rem; }
+  .winner-label { font-size: 1.1rem; }
+  .podium-name { font-size: 1.1rem; }
+  .podium-style, .podium-aptitude { font-size: 0.78rem; }
+  .podium-comment { font-size: 0.72rem; max-width: 260px; }
+  .result-row { font-size: 1.05rem; padding: 10px 16px; }
+  .result-meta { font-size: 0.8rem; }
+
+  /* 観客席：大画面ではもっと存在感を出す（屋根＋座席の2段構成）。 */
+  .race-grandstand {
+    height: 30px;
+    bottom: -30px;
+    background:
+      repeating-radial-gradient(circle at 6px 22px, rgba(255,255,255,0.55) 0 2px, transparent 2.5px 16px),
+      repeating-linear-gradient(90deg,
+        var(--color-accent-red) 0 16px,
+        var(--color-accent-yellow) 16px 32px,
+        var(--color-accent-blue) 32px 48px,
+        var(--color-accent-green) 48px 64px);
+    border-top: 5px solid #2b3040;
+  }
+}
+
+/* ============================================================
    レスポンシブ調整
    ============================================================ */
 @media (max-width: 480px) {
