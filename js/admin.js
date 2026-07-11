@@ -45,8 +45,32 @@ const Admin = (() => {
       audioStatus: document.getElementById('admin-audio-status'),
     };
 
+    // 要素が見つからない場合（IDの変更・削除など）は、無言で失敗せず
+    // コンソールにはっきり出す。管理パネルは店舗運営に必須のため、
+    // ここで気付けないと「設定ボタンが反応しない」原因調査が長引く。
+    const missing = Object.entries(el).filter(([, node]) => !node).map(([key]) => key);
+    if (missing.length > 0) {
+      console.error('[Admin] 以下の要素が見つかりません（HTMLのID変更・削除の可能性）:', missing);
+      if (!el.toggleBtn || !el.panel) return;
+    }
+
     applySettingsToInputs();
     bindEvents();
+  }
+
+  function isPanelOpen() {
+    return !el.panel.classList.contains('hidden');
+  }
+
+  function openPanel() {
+    el.panel.classList.remove('hidden');
+    // パネルを開くたびに現在の音声状態を表示する（本番中に音が出ない
+    // 場合の原因調査は管理パネル内だけで完結させ、一般画面には出さない）。
+    showAudioDiagnostics();
+  }
+
+  function closePanel() {
+    el.panel.classList.add('hidden');
   }
 
   function applySettingsToInputs() {
@@ -64,16 +88,31 @@ const Admin = (() => {
   }
 
   function bindEvents() {
-    el.toggleBtn.addEventListener('click', () => {
-      el.panel.classList.toggle('hidden');
-      // パネルを開くたびに現在の音声状態を表示する（本番中に音が出ない
-      // 場合の原因調査は管理パネル内だけで完結させ、一般画面には出さない）。
-      if (!el.panel.classList.contains('hidden')) {
-        showAudioDiagnostics();
+    el.toggleBtn.addEventListener('click', (e) => {
+      // documentレベルの背景クリック判定より先にこのイベントが処理される
+      // ため、開いた直後に背景クリック扱いで即座に閉じてしまわないよう
+      // 伝播を止めておく。
+      e.stopPropagation();
+      if (isPanelOpen()) {
+        closePanel();
+      } else {
+        openPanel();
       }
     });
-    el.closeBtn.addEventListener('click', () => {
-      el.panel.classList.add('hidden');
+    el.closeBtn.addEventListener('click', () => closePanel());
+
+    // 背景（パネル・トグルボタン以外の場所）をクリックしたら閉じる。
+    document.addEventListener('click', (e) => {
+      if (!isPanelOpen()) return;
+      if (el.panel.contains(e.target) || el.toggleBtn.contains(e.target)) return;
+      closePanel();
+    });
+
+    // PC操作を前提に、Escapeキーでも閉じられるようにする。
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isPanelOpen()) {
+        closePanel();
+      }
     });
 
     el.btnNewRace.addEventListener('click', () => { AudioManager.playSe('decide'); UI.startNewRace(); });
