@@ -26,27 +26,6 @@ const HorseGenerator = (() => {
     '#2b2b2b', // 8: 黒
   ];
 
-  // 差し替え可能な馬イラスト（assets/images/horse_<色名>.png）のファイル名に
-  // 使う色名。JERSEY_COLORSと同じ並び順（馬番=インデックス+1）。
-  const JERSEY_COLOR_NAMES = [
-    'red', 'blue', 'yellow', 'green', 'purple', 'orange', 'white', 'black',
-  ];
-
-  // 馬体そのものの毛色（栗毛・芦毛など）。ゼッケン色はあくまで頭絡と
-  // ゼッケン（アクセント）に使う色で、馬体色とは別に持たせることで
-  // 「馬番ごとに違う毛色のポニー」に見えるようにする。JERSEY_COLORSと
-  // 同じ並び順（馬番=インデックス+1）。
-  const COAT_COLORS = [
-    '#a9713f', // 1: 栗毛
-    '#cfcfd2', // 2: 芦毛（グレー）
-    '#c99a52', // 3: 栃栗毛
-    '#8a5a34', // 4: 黒鹿毛
-    '#4a3b3a', // 5: 黒褐色
-    '#bf8c56', // 6: 栗毛（明るめ）
-    '#f7f2e7', // 7: 白毛
-    '#2b2b2b', // 8: 黒毛
-  ];
-
   /**
    * 40〜99の範囲で能力値を生成する。
    * 極端に低い能力（1桁など）を避け、どの馬にも見せ場が
@@ -82,8 +61,6 @@ const HorseGenerator = (() => {
         heavyAptitude: randomAptitude(),
         runningStyle: RaceConditions.pickRandomRunningStyle(),
         color: JERSEY_COLORS[i % JERSEY_COLORS.length],
-        colorName: JERSEY_COLOR_NAMES[i % JERSEY_COLOR_NAMES.length],
-        coat: COAT_COLORS[i % COAT_COLORS.length],
       });
     }
     return horses;
