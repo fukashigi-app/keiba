@@ -26,6 +26,13 @@ const HorseGenerator = (() => {
     '#2b2b2b', // 8: 黒
   ];
 
+  // 馬体そのものの毛色（ゼッケン色とは別に、馬ごとに違う毛色に見えるよう
+  // CSSシルエット描画で使う）。
+  const COAT_COLORS = [
+    '#c98a4b', '#e8ddc9', '#a56b32', '#8a5a34',
+    '#6b4a2f', '#4a4a4a', '#d9b98a', '#3a2f28',
+  ];
+
   /**
    * 40〜99の範囲で能力値を生成する。
    * 極端に低い能力（1桁など）を避け、どの馬にも見せ場が
@@ -61,6 +68,7 @@ const HorseGenerator = (() => {
         heavyAptitude: randomAptitude(),
         runningStyle: RaceConditions.pickRandomRunningStyle(),
         color: JERSEY_COLORS[i % JERSEY_COLORS.length],
+        coat: COAT_COLORS[i % COAT_COLORS.length],
       });
     }
     return horses;

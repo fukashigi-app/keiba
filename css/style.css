@@ -293,39 +293,13 @@ html, body {
   flex: 1;
   min-width: 0;
 }
-
-/* 馬画像（assets/images/horse_<馬番>.png）。CSS/SVGでの馬生成は行わず、
-   実画像のみを表示する。縦横比は維持したまま、枠に収まるよう縮小する。 */
-.horse-photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  image-rendering: -webkit-optimize-contrast;
+/* カード内の馬シルエットは、トラック上の馬(.horse)と同じCSSを流用しつつ、
+   カードの箱に収まるサイズだけ上書きする。 */
+.horse-card-illust .horse.card-horse {
+  height: 66%;
+  transition: none;
 }
-.horse-photo.hidden { display: none; }
 
-/* 画像が見つからない場合だけ表示するプレースホルダー。 */
-.horse-photo-placeholder {
-  position: absolute;
-  inset: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  border: 2px dashed #c7cede;
-  border-radius: 8px;
-  background: #eef1f8;
-  color: var(--color-muted);
-  font-size: 0.7rem;
-  font-weight: bold;
-  line-height: 1.3;
-  padding: 4px;
-}
-.horse-photo-placeholder.hidden { display: none; }
-
-/* 馬番はカード内で最も目立つ要素にする：イラストの左上に大きく重ねて表示。 */
 /* 馬番はカード内で最も目立つ要素にする：馬名の左に大きく並べて表示。
    紙の投票券に記入しやすいよう、番号だけ独立して読み取りやすくする。 */
 .horse-card-header {
@@ -871,13 +845,12 @@ html, body {
   to { background-position: -24px 46px; }
 }
 
-/* --- 馬（実画像） ---
+/* --- 馬（CSS/SVGシルエット） ---
    楕円トラック上に直接配置する。.horse-slot がJS計算のleft/top(px)で
    トラック上の位置を決め、中の.horseがJS計算のrotate/scaleXで進行方向を
    向く。番号バッジ(.horse-badge)は.horse-slotの直接の子にすることで、
    馬の向きが変わっても常に正立のまま読みやすく表示される。
-   馬の見た目はCSS/SVGでは生成せず、assets/images/の実画像のみを使う
-   （.horse-photo / .horse-photo-placeholder は上のカード用スタイルと共通）。 */
+   馬の見た目は画像を使わずCSSのみで描画する。 */
 .horse-slot {
   position: absolute;
   left: 0;
@@ -886,6 +859,9 @@ html, body {
   z-index: 10;
 }
 
+/* 白・黒などの馬体色が背景と同化しないよう、シルエット全体に細い
+   縁取りをdrop-shadowの多重がけで作る（drop-shadowは透明部分を無視し
+   輪郭に沿うため、色を問わず背景から浮き立たせられる）。 */
 .horse {
   position: relative;
   height: var(--horse-h, 40px);
@@ -894,11 +870,111 @@ html, body {
      向き(transform)の変化だけ短時間でなめらかにする（位置はslot側が
      担当していて別途transition:noneのため、判定の重さには影響しない）。 */
   transition: transform 0.16s ease;
-  filter: drop-shadow(0 3px 2px rgba(0,0,0,0.25));
+  filter:
+    drop-shadow(0 3px 2px rgba(0,0,0,0.25))
+    drop-shadow(0.8px 0 0 rgba(0,0,0,0.45))
+    drop-shadow(-0.8px 0 0 rgba(0,0,0,0.45))
+    drop-shadow(0 0.8px 0 rgba(0,0,0,0.45))
+    drop-shadow(0 -0.8px 0 rgba(0,0,0,0.45));
 }
 
+/* 馬体そのものは毛色(--coat)で塗る。ゼッケン色(--jersey)は頭絡・
+   ゼッケンなどの「アクセント」だけに使うことで、馬番ごとに毛色の違う
+   ポニーに見えるようにしてある。丸みを強めたぽってり体型にする。 */
+.horse-body {
+  position: absolute;
+  left: 18%;
+  top: 32%;
+  width: 56%;
+  height: 40%;
+  background: var(--coat, #999);
+  border-radius: 55% 65% 50% 60%;
+}
+/* 首と頭を1つの図形（多角形）として繋げて描くことで、
+   パーツ同士のつなぎ目が浮かないようにする。頭を大きめの
+   デフォルメにして可愛らしさを強調する。 */
+.horse-neck-head {
+  position: absolute;
+  left: 44%;
+  top: -52%;
+  width: 54%;
+  height: 92%;
+  background: var(--coat, #999);
+  clip-path: polygon(
+    18% 100%, 0% 82%,
+    10% 50%, 24% 22%,
+    42% 6%, 62% 0%,
+    82% 8%, 96% 24%,
+    100% 38%, 86% 46%,
+    72% 46%, 60% 60%,
+    48% 78%, 36% 92%
+  );
+}
+/* 頭絡（ヘッドバンド）。ゼッケン色でひと目で馬番の色が分かるように
+   額を横切る帯を重ねる。 */
+.horse-browband {
+  position: absolute;
+  left: 55%;
+  top: -45%;
+  width: 28%;
+  height: 7%;
+  background: var(--jersey, #999);
+  border-radius: 3px;
+  transform: rotate(-8deg);
+  z-index: 1;
+  /* 白毛・黒毛の馬はゼッケン色と毛色が同じになるため、二重の縁取りで
+     どの毛色に対しても輪郭が見えるようにする。 */
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 0 0 2.5px rgba(255,255,255,0.5);
+}
+/* ゼッケン（鞍下の色布）。馬体色とは別にゼッケン色を乗せて、
+   胴体側からも馬番の色がすぐ分かるようにする。 */
+.horse-blanket {
+  position: absolute;
+  left: 29%;
+  top: 38%;
+  width: 36%;
+  height: 24%;
+  background: var(--jersey, #999);
+  border-radius: 30%;
+  opacity: 0.92;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 0 0 2.5px rgba(255,255,255,0.5);
+}
+/* たてがみは量感を出してボリュームアップ。 */
+.horse-mane {
+  position: absolute;
+  left: 46%;
+  top: -50%;
+  width: 16%;
+  height: 58%;
+  background: #6b4a2f;
+  border-radius: 55%;
+  transform: rotate(18deg);
+}
+.horse-ear {
+  position: absolute;
+  left: 60%;
+  top: -54%;
+  width: 7%;
+  height: 20%;
+  background: var(--coat, #999);
+  border-radius: 60% 60% 20% 20%;
+  transform: rotate(8deg);
+}
+/* しっぽも大きめのふわっとしたシルエットにする。 */
+.horse-tail {
+  position: absolute;
+  left: -2%;
+  top: 18%;
+  width: 28%;
+  height: 26%;
+  background: #6b4a2f;
+  border-radius: 65% 15% 65% 15%;
+  transform-origin: right center;
+}
 /* 馬番バッジは.horse-slotの直接の子（.horseの外）に置くことで、
-   馬の向き(scaleX/rotate)に影響されず常に正立で表示される。 */
+   馬の向き(scaleX/rotate)に影響されず常に正立で表示される。
+   ゼッケン色はここに直接設定する（.horseの兄弟要素のため、CSS変数は
+   継承されず、ここで指定しないと色が反映されない）。 */
 .horse-badge {
   position: absolute;
   left: 50%;
@@ -915,6 +991,55 @@ html, body {
   color: var(--color-ink);
   font-weight: 900;
   z-index: 12;
+}
+/* 脚は少し太くして遠目でも視認しやすくする。 */
+.horse-leg {
+  position: absolute;
+  width: 6%;
+  height: 38%;
+  background: #6b4a2f;
+  top: 62%;
+  border-radius: 4px;
+  transform-origin: top center;
+}
+.leg-back-1  { left: 23%; }
+.leg-back-2  { left: 32%; }
+.leg-front-1 { left: 61%; }
+.leg-front-2 { left: 70%; }
+
+/* かわいい表情（目・ほっぺ） */
+/* 目を大きくしてキラッとしたハイライトを付け、ゲームセンターの
+   メダルゲーム風の可愛らしい表情にする。 */
+.horse-eye {
+  position: absolute;
+  left: 75%;
+  top: -30%;
+  width: 11%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #2b2b2b;
+  z-index: 2;
+}
+.horse-eye::after {
+  content: '';
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  width: 42%;
+  height: 42%;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.95;
+}
+.horse-cheek {
+  position: absolute;
+  left: 68%;
+  top: -10%;
+  width: 11%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #ff9fb3;
+  opacity: 0.7;
 }
 
 /* ダートコースの砂ぼこりエフェクト（.horse.dust-active のみ表示） */
@@ -967,29 +1092,46 @@ html, body {
   100% { opacity: 0; transform: translate(-80%, -55%) rotate(-50deg) scale(1.2); }
 }
 
-/* 馬画像そのものは一切描き直さず、CSSのtransformだけで動きを付ける
-   （.horseはJSが向き(scaleX/rotate)を制御しているため、揺れは子要素の
-   .horse-photoに別途かける＝親子で干渉しない）。
-   レース中：上下2〜3pxのバウンス＋わずかな前後の傾きでギャロップ感を
-   出す。しっぽ単体は動かせないため、全体の微妙な傾き変化で
-   「揺れているような」印象を出す。 */
-.horse.running .horse-photo {
-  animation: photoGallop 0.4s ease-in-out infinite;
+/* 走行中のギャロップアニメーション（脚・しっぽ・体の上下運動）。
+   .horseの向き(scaleX/rotate)はJSがインラインstyleで制御しているため、
+   揺れは全て子要素にかけて親子で干渉しないようにする。 */
+.horse.running .leg-front-1 { animation: gallopA 0.4s linear infinite; }
+.horse.running .leg-front-2 { animation: gallopB 0.4s linear infinite; }
+.horse.running .leg-back-1  { animation: gallopB 0.4s linear infinite; }
+.horse.running .leg-back-2  { animation: gallopA 0.4s linear infinite; }
+.horse.running .horse-tail  { animation: tailWag 0.5s ease-in-out infinite; }
+.horse.running .horse-body  { animation: bodyBob 0.4s ease-in-out infinite; }
+
+@keyframes gallopA {
+  0%, 100% { transform: rotate(25deg); }
+  50% { transform: rotate(-20deg); }
 }
-@keyframes photoGallop {
+@keyframes gallopB {
+  0%, 100% { transform: rotate(-20deg); }
+  50% { transform: rotate(25deg); }
+}
+@keyframes tailWag {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-14deg); }
+}
+/* 上下のバウンス＋わずかな前後の傾きで、走る時の弾む躍動感を出す。 */
+@keyframes bodyBob {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-3px) rotate(-2deg); }
+  50% { transform: translateY(-2px) rotate(-3deg); }
 }
 
 /* 馬紹介・投票カード用のアイドルアニメーション（ゆったり呼吸するような
-   動き）。レース中の速い動きとは違い、静止画に見えないための
-   控えめな揺れだけにする。 */
-.idle-photo .horse-photo {
-  animation: photoIdle 1.8s ease-in-out infinite;
+   動き）。レース中のギャロップ（脚の高速な動き）とは違い、静止画に
+   見えないための控えめな揺れだけにする。 */
+.horse.idle .horse-body { animation: idleBob 1.8s ease-in-out infinite; }
+.horse.idle .horse-tail { animation: idleTailSway 2.2s ease-in-out infinite; }
+@keyframes idleBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4%); }
 }
-@keyframes photoIdle {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-2px) rotate(1deg); }
+@keyframes idleTailSway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-8deg); }
 }
 
 /* ---------- 現在の順位サイドバー（広い画面のみ表示） ---------- */

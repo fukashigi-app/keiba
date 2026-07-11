@@ -72,7 +72,6 @@ const UI = (() => {
 
     bindEvents();
     AudioManager.init();
-    preloadHorseImages();
     showScreen('top');
   }
 
@@ -169,52 +168,32 @@ const UI = (() => {
     `;
   }
 
-  // 馬画像（assets/images/horse_<馬番>.png）を一度だけ読み込んで結果を
-  // キャッシュしておく。'missing'と確定した馬番は、以降レース・カードを
-  // 何度描画してもプレースホルダーを即座に出すだけで再読み込みしない。
-  const HORSE_IMAGE_COUNT = 8;
-  const horseImageStatus = {};
-
-  function preloadHorseImages() {
-    for (let n = 1; n <= HORSE_IMAGE_COUNT; n++) {
-      const img = new Image();
-      img.onload = () => { horseImageStatus[n] = 'ok'; };
-      img.onerror = () => { horseImageStatus[n] = 'missing'; };
-      img.src = `assets/images/horse_${n}.png`;
-    }
-  }
-
   /**
-   * 馬画像（またはプレースホルダー）のHTMLを組み立てる共通関数。
+   * 馬シルエット（CSSで描いたパーツ一式）のHTMLを組み立てる共通関数。
    * レース画面（トラック上）と馬紹介・投票画面（カード内）の両方から
-   * 呼ばれる。画像はCSS/SVGでは一切生成せず、assets/images/の実画像
-   * のみを使う。読み込み確認前（'pending'）は楽観的に<img>を出し、
-   * 実際に読み込みエラーになった時点でプレースホルダーに切り替える。
+   * 呼ばれる。馬の見た目はCSS/SVGのみで描画し、画像ファイルは一切
+   * 読み込まない。見た目の変更はここを直せば両画面に反映される。
    */
-  function buildHorsePhotoHtml(number) {
-    if (horseImageStatus[number] === 'missing') {
-      return '<div class="horse-photo-placeholder">画像がありません</div>';
-    }
+  function buildHorseInnerHtml() {
     return `
-      <img class="horse-photo" src="assets/images/horse_${number}.png" alt="">
-      <div class="horse-photo-placeholder hidden">画像がありません</div>
+      <div class="dust-puff dust-puff-1"></div>
+      <div class="dust-puff dust-puff-2"></div>
+      <div class="grass-puff grass-puff-1"></div>
+      <div class="grass-puff grass-puff-2"></div>
+      <div class="horse-tail"></div>
+      <div class="horse-body"></div>
+      <div class="horse-blanket"></div>
+      <div class="horse-leg leg-front-1"></div>
+      <div class="horse-leg leg-front-2"></div>
+      <div class="horse-leg leg-back-1"></div>
+      <div class="horse-leg leg-back-2"></div>
+      <div class="horse-mane"></div>
+      <div class="horse-neck-head"></div>
+      <div class="horse-browband"></div>
+      <div class="horse-ear"></div>
+      <div class="horse-eye"></div>
+      <div class="horse-cheek"></div>
     `;
-  }
-
-  /**
-   * buildHorsePhotoHtml()で挿入した<img>のエラー処理を後付けする。
-   * innerHTML経由で挿入した<img>はエラーが発生済みでも onerror が
-   * 拾えないことがあるため、複雑度を避けてイベントリスナーを都度張る。
-   */
-  function wireHorsePhotoFallback(container, number) {
-    const img = container.querySelector('.horse-photo');
-    if (!img) return;
-    const placeholder = container.querySelector('.horse-photo-placeholder');
-    img.addEventListener('error', () => {
-      horseImageStatus[number] = 'missing';
-      img.classList.add('hidden');
-      if (placeholder) placeholder.classList.remove('hidden');
-    });
   }
 
   /**
@@ -236,8 +215,10 @@ const UI = (() => {
       const compatComment = course ? RaceConditions.getCompatibilityComment(horse, course) : '';
       card.innerHTML = `
         <div class="horse-card-row">
-          <div class="horse-card-illust idle-photo">
-            ${buildHorsePhotoHtml(horse.number)}
+          <div class="horse-card-illust">
+            <div class="horse idle card-horse" style="--jersey:${horse.color};--coat:${horse.coat}">
+              ${buildHorseInnerHtml()}
+            </div>
           </div>
           <div class="horse-card-info">
             <div class="horse-card-header">
@@ -262,7 +243,6 @@ const UI = (() => {
         </div>
       `;
       gridEl.appendChild(card);
-      wireHorsePhotoFallback(card, horse.number);
     });
   }
 
@@ -434,17 +414,12 @@ const UI = (() => {
       slot.className = 'horse-slot';
       slot.id = `horse-slot-${horse.number}`;
       slot.innerHTML = `
-        <div class="horse${isDirt ? ' dust-active' : ' grass-active'}" id="horse-${horse.number}">
-          <div class="dust-puff dust-puff-1"></div>
-          <div class="dust-puff dust-puff-2"></div>
-          <div class="grass-puff grass-puff-1"></div>
-          <div class="grass-puff grass-puff-2"></div>
-          ${buildHorsePhotoHtml(horse.number)}
+        <div class="horse${isDirt ? ' dust-active' : ' grass-active'}" id="horse-${horse.number}" style="--jersey:${horse.color};--coat:${horse.coat}">
+          ${buildHorseInnerHtml()}
         </div>
         <div class="horse-badge" style="--jersey:${horse.color}">${horse.number}</div>
       `;
       el.ovalHorses.appendChild(slot);
-      wireHorsePhotoFallback(slot, horse.number);
     });
 
     // ゴール板：スタート＝ゴール地点に、進行方向と垂直な板を1本置く。
@@ -481,14 +456,12 @@ const UI = (() => {
     slot.style.left = `${wrapW / 2 + pos.x}px`;
     slot.style.top = `${wrapH / 2 + pos.y}px`;
 
-    // サイドビューの馬画像を進行方向に合わせる：上下逆さまにならないよう
+    // サイドビューの馬シルエットを進行方向に合わせる：上下逆さまにならないよう
     // 左右反転(scaleX)で向きを変え、コーナーでは軽いバンク角(rotate)だけ加える。
-    // 馬素材は左向きが正面（デフォルト）なので、右方向へ進む時だけ反転する
-    // （旧CSS馬シルエットは右向きが正面だったため、ここは符号が逆になる）。
     const angleRad = (pos.angleDeg * Math.PI) / 180;
     const facingLeft = Math.cos(angleRad) < 0;
-    const flip = facingLeft ? 1 : -1;
-    const bank = Math.sin(angleRad) * (facingLeft ? 10 : -10);
+    const flip = facingLeft ? -1 : 1;
+    const bank = Math.sin(angleRad) * (facingLeft ? -10 : 10);
     horseEl.style.transform = `scaleX(${flip}) rotate(${bank}deg)`;
   }
 
